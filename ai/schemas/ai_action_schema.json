@@ -1,0 +1,64 @@
+{
+  "type": "object",
+  "required": ["proposed_actions", "rationale"],
+  "properties": {
+    "proposed_actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["action"],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "adjust_volume",
+              "adjust_intensity",
+              "insert_rest_day",
+              "reschedule_session"
+            ],
+            "description": "Action type. Enforces Table 2 'Action' column and Table 3 'Invalid action type' rejection."
+          },
+          "percentage": {
+            "type": "integer",
+            "minimum": -20,
+            "maximum": 10,
+            "description": "Relative change in total weekly volume. Negative = reduce, positive = increase. Enforces Table 2 validation for 'adjust_volume' and Table 3 rejection if out of range."
+          },
+          "intensity_adjustment": {
+            "type": "number",
+            "minimum": -15,
+            "maximum": 10,
+            "description": "Relative adjustment to session intensity. Negative = easier, positive = harder. Backend translates to session-specific targets. Enforces Table 2 validation for 'adjust_intensity' and Table 3 rejection if out of range."
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Date for insert_rest_day or specific session actions. Validates Table 2 'insert_rest_day' required param; backend checks for plan bounds and overlaps (Table 3)."
+          },
+          "from_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date for reschedule_session. Backend enforces from_date < to_date and plan bounds (Table 3)."
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date",
+            "description": "End date for reschedule_session. Backend enforces from_date < to_date and plan bounds (Table 3)."
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["next_week", "current_week"],
+            "description": "Week the action applies to. Optional. Enforces Table 2 validation and Table 3 rejection for invalid values."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 10,
+      "description": "Explanation for the proposed actions. Required field, ensures AI provides reasoning. Relates to Table 2 'Rationale' column."
+    }
+  },
+  "additionalProperties": false
+}

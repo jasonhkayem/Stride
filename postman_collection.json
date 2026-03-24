@@ -1,0 +1,2176 @@
+{
+  "info": {
+    "name": "Final Year Project API",
+    "description": "Auto-generated from Flask routes in app.url_map",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:5000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "activities",
+      "item": [
+        {
+          "name": "GET /activities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/activities",
+            "description": "Auto-generated from Flask route: /activities"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /activities",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/activities",
+            "description": "Auto-generated from Flask route: /activities",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /activities/:record_id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/activities/:record_id",
+            "description": "Auto-generated from Flask route: /activities/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /activities/:record_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/activities/:record_id",
+            "description": "Auto-generated from Flask route: /activities/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /activities/:record_id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/activities/:record_id",
+            "description": "Auto-generated from Flask route: /activities/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /activities/:record_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/activities/:record_id",
+            "description": "Auto-generated from Flask route: /activities/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "activity_comments",
+      "item": [
+        {
+          "name": "GET /activity_comments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/activity_comments",
+            "description": "Auto-generated from Flask route: /activity_comments"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /activity_comments",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/activity_comments",
+            "description": "Auto-generated from Flask route: /activity_comments",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /activity_comments/:record_id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/activity_comments/:record_id",
+            "description": "Auto-generated from Flask route: /activity_comments/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /activity_comments/:record_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/activity_comments/:record_id",
+            "description": "Auto-generated from Flask route: /activity_comments/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /activity_comments/:record_id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/activity_comments/:record_id",
+            "description": "Auto-generated from Flask route: /activity_comments/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /activity_comments/:record_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/activity_comments/:record_id",
+            "description": "Auto-generated from Flask route: /activity_comments/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "activity_likes",
+      "item": [
+        {
+          "name": "GET /activity_likes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/activity_likes",
+            "description": "Auto-generated from Flask route: /activity_likes"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /activity_likes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/activity_likes",
+            "description": "Auto-generated from Flask route: /activity_likes",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /activity_likes/:record_id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/activity_likes/:record_id",
+            "description": "Auto-generated from Flask route: /activity_likes/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /activity_likes/:record_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/activity_likes/:record_id",
+            "description": "Auto-generated from Flask route: /activity_likes/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /activity_likes/:record_id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/activity_likes/:record_id",
+            "description": "Auto-generated from Flask route: /activity_likes/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /activity_likes/:record_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/activity_likes/:record_id",
+            "description": "Auto-generated from Flask route: /activity_likes/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "chatbot_sessions",
+      "item": [
+        {
+          "name": "GET /chatbot_sessions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/chatbot_sessions",
+            "description": "Auto-generated from Flask route: /chatbot_sessions"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chatbot_sessions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/chatbot_sessions",
+            "description": "Auto-generated from Flask route: /chatbot_sessions",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /chatbot_sessions/:record_id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/chatbot_sessions/:record_id",
+            "description": "Auto-generated from Flask route: /chatbot_sessions/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /chatbot_sessions/:record_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/chatbot_sessions/:record_id",
+            "description": "Auto-generated from Flask route: /chatbot_sessions/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /chatbot_sessions/:record_id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/chatbot_sessions/:record_id",
+            "description": "Auto-generated from Flask route: /chatbot_sessions/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /chatbot_sessions/:record_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/chatbot_sessions/:record_id",
+            "description": "Auto-generated from Flask route: /chatbot_sessions/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /chatbot_sessions/:record_id/messages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/chatbot_sessions/:record_id/messages",
+            "description": "Auto-generated from Flask route: /chatbot_sessions/<record_id>/messages"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chatbot_sessions/:record_id/reply",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/chatbot_sessions/:record_id/reply",
+            "description": "Auto-generated from Flask route: /chatbot_sessions/<record_id>/reply",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chatbot_sessions/:record_id/suggest_training_plan_actions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/chatbot_sessions/:record_id/suggest_training_plan_actions",
+            "description": "Auto-generated from Flask route: /chatbot_sessions/<record_id>/suggest_training_plan_actions",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "club_memberships",
+      "item": [
+        {
+          "name": "GET /club_memberships",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/club_memberships",
+            "description": "Auto-generated from Flask route: /club_memberships"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /club_memberships",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/club_memberships",
+            "description": "Auto-generated from Flask route: /club_memberships",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /club_memberships/:record_id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/club_memberships/:record_id",
+            "description": "Auto-generated from Flask route: /club_memberships/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /club_memberships/:record_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/club_memberships/:record_id",
+            "description": "Auto-generated from Flask route: /club_memberships/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /club_memberships/:record_id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/club_memberships/:record_id",
+            "description": "Auto-generated from Flask route: /club_memberships/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /club_memberships/:record_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/club_memberships/:record_id",
+            "description": "Auto-generated from Flask route: /club_memberships/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "clubs",
+      "item": [
+        {
+          "name": "GET /clubs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/clubs",
+            "description": "Auto-generated from Flask route: /clubs"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /clubs",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/clubs",
+            "description": "Auto-generated from Flask route: /clubs",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /clubs/:record_id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/clubs/:record_id",
+            "description": "Auto-generated from Flask route: /clubs/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /clubs/:record_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/clubs/:record_id",
+            "description": "Auto-generated from Flask route: /clubs/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /clubs/:record_id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/clubs/:record_id",
+            "description": "Auto-generated from Flask route: /clubs/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /clubs/:record_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/clubs/:record_id",
+            "description": "Auto-generated from Flask route: /clubs/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "completed_action_laps",
+      "item": [
+        {
+          "name": "GET /completed_action_laps",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/completed_action_laps",
+            "description": "Auto-generated from Flask route: /completed_action_laps"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /completed_action_laps",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/completed_action_laps",
+            "description": "Auto-generated from Flask route: /completed_action_laps",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /completed_action_laps/:lap_id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/completed_action_laps/:lap_id",
+            "description": "Auto-generated from Flask route: /completed_action_laps/<lap_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /completed_action_laps/:lap_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/completed_action_laps/:lap_id",
+            "description": "Auto-generated from Flask route: /completed_action_laps/<lap_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /completed_action_laps/:lap_id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/completed_action_laps/:lap_id",
+            "description": "Auto-generated from Flask route: /completed_action_laps/<lap_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /completed_action_laps/:lap_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/completed_action_laps/:lap_id",
+            "description": "Auto-generated from Flask route: /completed_action_laps/<lap_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /completed_action_laps/bulk",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/completed_action_laps/bulk",
+            "description": "Auto-generated from Flask route: /completed_action_laps/bulk",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "completed_actions",
+      "item": [
+        {
+          "name": "GET /completed_actions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/completed_actions",
+            "description": "Auto-generated from Flask route: /completed_actions"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /completed_actions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/completed_actions",
+            "description": "Auto-generated from Flask route: /completed_actions",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /completed_actions/:completed_action_id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/completed_actions/:completed_action_id",
+            "description": "Auto-generated from Flask route: /completed_actions/<completed_action_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /completed_actions/:completed_action_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/completed_actions/:completed_action_id",
+            "description": "Auto-generated from Flask route: /completed_actions/<completed_action_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /completed_actions/:completed_action_id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/completed_actions/:completed_action_id",
+            "description": "Auto-generated from Flask route: /completed_actions/<completed_action_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /completed_actions/:completed_action_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/completed_actions/:completed_action_id",
+            "description": "Auto-generated from Flask route: /completed_actions/<completed_action_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /completed_actions/strava",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/completed_actions/strava",
+            "description": "Auto-generated from Flask route: /completed_actions/strava",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "event_registrations",
+      "item": [
+        {
+          "name": "GET /event_registrations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/event_registrations",
+            "description": "Auto-generated from Flask route: /event_registrations"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /event_registrations",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/event_registrations",
+            "description": "Auto-generated from Flask route: /event_registrations",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /event_registrations/:record_id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/event_registrations/:record_id",
+            "description": "Auto-generated from Flask route: /event_registrations/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /event_registrations/:record_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/event_registrations/:record_id",
+            "description": "Auto-generated from Flask route: /event_registrations/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /event_registrations/:record_id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/event_registrations/:record_id",
+            "description": "Auto-generated from Flask route: /event_registrations/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /event_registrations/:record_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/event_registrations/:record_id",
+            "description": "Auto-generated from Flask route: /event_registrations/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "events",
+      "item": [
+        {
+          "name": "GET /events",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/events",
+            "description": "Auto-generated from Flask route: /events"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /events",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/events",
+            "description": "Auto-generated from Flask route: /events",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /events/:record_id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/events/:record_id",
+            "description": "Auto-generated from Flask route: /events/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /events/:record_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/events/:record_id",
+            "description": "Auto-generated from Flask route: /events/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /events/:record_id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/events/:record_id",
+            "description": "Auto-generated from Flask route: /events/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /events/:record_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/events/:record_id",
+            "description": "Auto-generated from Flask route: /events/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health",
+            "description": "Auto-generated from Flask route: /health"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "messages",
+      "item": [
+        {
+          "name": "GET /messages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/messages",
+            "description": "Auto-generated from Flask route: /messages"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /messages",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/messages",
+            "description": "Auto-generated from Flask route: /messages",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /messages/:record_id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/messages/:record_id",
+            "description": "Auto-generated from Flask route: /messages/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /messages/:record_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/messages/:record_id",
+            "description": "Auto-generated from Flask route: /messages/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /messages/:record_id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/messages/:record_id",
+            "description": "Auto-generated from Flask route: /messages/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /messages/:record_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/messages/:record_id",
+            "description": "Auto-generated from Flask route: /messages/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "root",
+      "item": [
+        {
+          "name": "GET /",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/",
+            "description": "Auto-generated from Flask route: /"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "static",
+      "item": [
+        {
+          "name": "GET /static/:path:filename",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/static/:path:filename",
+            "description": "Auto-generated from Flask route: /static/<path:filename>"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "training_plan_actions",
+      "item": [
+        {
+          "name": "GET /training_plan_actions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/training_plan_actions",
+            "description": "Auto-generated from Flask route: /training_plan_actions"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /training_plan_actions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/training_plan_actions",
+            "description": "Auto-generated from Flask route: /training_plan_actions",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /training_plan_actions/:record_id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/training_plan_actions/:record_id",
+            "description": "Auto-generated from Flask route: /training_plan_actions/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /training_plan_actions/:record_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/training_plan_actions/:record_id",
+            "description": "Auto-generated from Flask route: /training_plan_actions/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /training_plan_actions/:record_id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/training_plan_actions/:record_id",
+            "description": "Auto-generated from Flask route: /training_plan_actions/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /training_plan_actions/:record_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/training_plan_actions/:record_id",
+            "description": "Auto-generated from Flask route: /training_plan_actions/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /training_plan_actions/apply_ai_actions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/training_plan_actions/apply_ai_actions",
+            "description": "Auto-generated from Flask route: /training_plan_actions/apply_ai_actions",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "training_plan_adjustments",
+      "item": [
+        {
+          "name": "GET /training_plan_adjustments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/training_plan_adjustments",
+            "description": "Auto-generated from Flask route: /training_plan_adjustments"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /training_plan_adjustments",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/training_plan_adjustments",
+            "description": "Auto-generated from Flask route: /training_plan_adjustments",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /training_plan_adjustments/:adjustment_id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/training_plan_adjustments/:adjustment_id",
+            "description": "Auto-generated from Flask route: /training_plan_adjustments/<adjustment_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /training_plan_adjustments/:adjustment_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/training_plan_adjustments/:adjustment_id",
+            "description": "Auto-generated from Flask route: /training_plan_adjustments/<adjustment_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /training_plan_adjustments/:adjustment_id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/training_plan_adjustments/:adjustment_id",
+            "description": "Auto-generated from Flask route: /training_plan_adjustments/<adjustment_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /training_plan_adjustments/:adjustment_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/training_plan_adjustments/:adjustment_id",
+            "description": "Auto-generated from Flask route: /training_plan_adjustments/<adjustment_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /training_plan_adjustments/:adjustment_id/apply",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/training_plan_adjustments/:adjustment_id/apply",
+            "description": "Auto-generated from Flask route: /training_plan_adjustments/<adjustment_id>/apply",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "training_plan_templates",
+      "item": [
+        {
+          "name": "GET /training_plan_templates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/training_plan_templates",
+            "description": "Auto-generated from Flask route: /training_plan_templates"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /training_plan_templates",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/training_plan_templates",
+            "description": "Auto-generated from Flask route: /training_plan_templates",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /training_plan_templates/:record_id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/training_plan_templates/:record_id",
+            "description": "Auto-generated from Flask route: /training_plan_templates/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /training_plan_templates/:record_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/training_plan_templates/:record_id",
+            "description": "Auto-generated from Flask route: /training_plan_templates/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /training_plan_templates/:record_id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/training_plan_templates/:record_id",
+            "description": "Auto-generated from Flask route: /training_plan_templates/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /training_plan_templates/:record_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/training_plan_templates/:record_id",
+            "description": "Auto-generated from Flask route: /training_plan_templates/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "training_plan_versions",
+      "item": [
+        {
+          "name": "GET /training_plan_versions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/training_plan_versions",
+            "description": "Auto-generated from Flask route: /training_plan_versions"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /training_plan_versions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/training_plan_versions",
+            "description": "Auto-generated from Flask route: /training_plan_versions",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /training_plan_versions/:record_id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/training_plan_versions/:record_id",
+            "description": "Auto-generated from Flask route: /training_plan_versions/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /training_plan_versions/:record_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/training_plan_versions/:record_id",
+            "description": "Auto-generated from Flask route: /training_plan_versions/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /training_plan_versions/:record_id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/training_plan_versions/:record_id",
+            "description": "Auto-generated from Flask route: /training_plan_versions/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /training_plan_versions/:record_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/training_plan_versions/:record_id",
+            "description": "Auto-generated from Flask route: /training_plan_versions/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /training_plan_versions/:record_id/full",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/training_plan_versions/:record_id/full",
+            "description": "Auto-generated from Flask route: /training_plan_versions/<record_id>/full"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /training_plan_versions/apply_ai_actions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/training_plan_versions/apply_ai_actions",
+            "description": "Auto-generated from Flask route: /training_plan_versions/apply_ai_actions",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "user_training_plans",
+      "item": [
+        {
+          "name": "GET /user_training_plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/user_training_plans",
+            "description": "Auto-generated from Flask route: /user_training_plans"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /user_training_plans",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user_training_plans",
+            "description": "Auto-generated from Flask route: /user_training_plans",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /user_training_plans/:record_id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/user_training_plans/:record_id",
+            "description": "Auto-generated from Flask route: /user_training_plans/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /user_training_plans/:record_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/user_training_plans/:record_id",
+            "description": "Auto-generated from Flask route: /user_training_plans/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /user_training_plans/:record_id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user_training_plans/:record_id",
+            "description": "Auto-generated from Flask route: /user_training_plans/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /user_training_plans/:record_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/user_training_plans/:record_id",
+            "description": "Auto-generated from Flask route: /user_training_plans/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /user_training_plans/:record_id/full",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/user_training_plans/:record_id/full",
+            "description": "Auto-generated from Flask route: /user_training_plans/<record_id>/full"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "users",
+      "item": [
+        {
+          "name": "GET /users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users",
+            "description": "Auto-generated from Flask route: /users"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /users",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users",
+            "description": "Auto-generated from Flask route: /users",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /users/:record_id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/users/:record_id",
+            "description": "Auto-generated from Flask route: /users/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /users/:record_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users/:record_id",
+            "description": "Auto-generated from Flask route: /users/<record_id>"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH /users/:record_id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users/:record_id",
+            "description": "Auto-generated from Flask route: /users/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /users/:record_id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users/:record_id",
+            "description": "Auto-generated from Flask route: /users/<record_id>",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /users/:record_id/full",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users/:record_id/full",
+            "description": "Auto-generated from Flask route: /users/<record_id>/full"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /users/:record_id/strava",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/users/:record_id/strava",
+            "description": "Auto-generated from Flask route: /users/<record_id>/strava"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /users/:record_id/strava",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users/:record_id/strava",
+            "description": "Auto-generated from Flask route: /users/<record_id>/strava"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /users/:record_id/strava/oauth/callback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users/:record_id/strava/oauth/callback",
+            "description": "Auto-generated from Flask route: /users/<record_id>/strava/oauth/callback",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /users/:record_id/strava/oauth/start",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users/:record_id/strava/oauth/start",
+            "description": "Auto-generated from Flask route: /users/<record_id>/strava/oauth/start"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /users/strava/oauth/callback",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users/strava/oauth/callback",
+            "description": "Auto-generated from Flask route: /users/strava/oauth/callback"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /users/strava/oauth/callback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users/strava/oauth/callback",
+            "description": "Auto-generated from Flask route: /users/strava/oauth/callback",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
