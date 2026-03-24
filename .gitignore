@@ -1,25 +1,28 @@
-# Python compiled files
+# Python cache
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
 
-# Virtual environment
+# Virtualenvs (if you create one later)
+.venv/
 venv/
 env/
-.venv/
+ENV/
 
-# VSCode settings
-.vscode/
+# Test / coverage
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 
-# PyCharm / JetBrains
-.idea/
-
-# Environment variables
+# Environment secrets
 .env
+.env.*
 
-# Logs
-*.log
+# Node dependencies (present in repo)
+node_modules/
+
+# Editor settings (present in repo)
+.vscode/
 
 # OS files
 .DS_Store
