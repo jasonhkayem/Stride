@@ -1,27 +1,29 @@
-# Environment variables (contains real API keys — never commit)
-.env
-
-# Python bytecode
+# Python cache
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
 
-# SQLite database
-*.db
-
-# Pytest cache
-.pytest_cache/
-
-# Virtual environments
-venv/
+# Virtualenvs (if you create one later)
 .venv/
+venv/
 env/
+ENV/
+
+# Test / coverage
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Environment secrets
+.env
+.env.*
+
+# Node dependencies (present in repo)
+node_modules/
+
+# Editor settings (present in repo)
+.vscode/
 
 # OS files
 .DS_Store
 Thumbs.db
-
-# IDE
-.vscode/
-.idea/
