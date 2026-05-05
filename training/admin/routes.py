@@ -4,7 +4,7 @@ from datetime import date
 
 from flask import Blueprint, jsonify, request
 
-from .controller import overview, top_users, trends, users
+from .controller import kick_logs, overview, top_users, trends, users
 
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -51,6 +51,15 @@ def top_users_route():
     except ValueError:
         return jsonify({"error": "limit must be an integer"}), 400
     return top_users(admin_user_id=_admin_header(), limit=limit)
+
+
+@admin_bp.route("/kick_logs", methods=["GET"])
+def kick_logs_route():
+    try:
+        limit = _int_param("limit", 50)
+    except ValueError:
+        return jsonify({"error": "limit must be an integer"}), 400
+    return kick_logs(admin_user_id=_admin_header(), limit=limit)
 
 
 @admin_bp.route("/users", methods=["GET"])

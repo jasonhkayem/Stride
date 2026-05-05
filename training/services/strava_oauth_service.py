@@ -19,6 +19,7 @@ class StravaOAuthService:
     TOKEN_URL = "https://www.strava.com/api/v3/oauth/token"
     ATHLETE_URL = "https://www.strava.com/api/v3/athlete"
     ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
+    ACTIVITY_DETAIL_URL = "https://www.strava.com/api/v3/activities/{}"
 
     def __init__(self):
         self.client_id = os.getenv("STRAVA_CLIENT_ID", "").strip()
@@ -132,6 +133,32 @@ class StravaOAuthService:
             raise StravaOAuthError("Strava athlete payload missing id")
         return payload
 
+    def refresh_access_token(self, refresh_token: str) -> Dict[str, Any]:
+        self._require_config()
+        if not refresh_token:
+            raise StravaOAuthError("Missing refresh token")
+
+        body = parse.urlencode(
+            {
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+            }
+        ).encode("utf-8")
+        req = request.Request(self.TOKEN_URL, data=body, method="POST")
+        req.add_header("Content-Type", "application/x-www-form-urlencoded")
+
+        try:
+            with request.urlopen(req, timeout=20) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+        except Exception as exc:
+            raise StravaOAuthError(f"Failed to refresh Strava token: {exc}") from exc
+
+        if not payload.get("access_token"):
+            raise StravaOAuthError("Strava token refresh response missing access_token")
+        return payload
+
     def fetch_activities(
         self,
         access_token: str,
@@ -168,3 +195,18 @@ class StravaOAuthService:
         if not isinstance(payload, list):
             raise StravaOAuthError("Unexpected Strava activities response format")
         return payload
+
+    def fetch_activity_detail(self, access_token: str, activity_id: str) -> Dict[str, Any]:
+        if not access_token:
+            raise StravaOAuthError("Missing access token")
+
+        url = self.ACTIVITY_DETAIL_URL.format(activity_id)
+        req = request.Request(url, method="GET")
+        req.add_header("Authorization", f"Bearer {access_token}")
+        req.add_header("Accept", "application/json")
+
+        try:
+            with request.urlopen(req, timeout=20) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except Exception as exc:
+            raise StravaOAuthError(f"Failed to fetch Strava activity detail: {exc}") from exc

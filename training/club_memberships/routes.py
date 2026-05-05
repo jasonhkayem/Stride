@@ -3,7 +3,9 @@
 from flask import Blueprint, request
 from marshmallow import Schema, ValidationError, fields
 
-from .controller import approve, create, delete, get_by_id, list_all, list_by_club, reject, update
+from training.auth.decorators import require_auth
+
+from .controller import approve, create, delete, get_by_id, kick, list_all, list_by_club, reject, update
 from .schemas import ClubMembershipSchema
 
 
@@ -22,6 +24,7 @@ filter_schema = MembershipFilterSchema()
 
 
 @club_memberships_bp.route("", methods=["POST"])
+@require_auth
 def create_route():
     payload = request.get_json(silent=True) or {}
     try:
@@ -72,3 +75,10 @@ def update_route(record_id: str):
 @club_memberships_bp.route("/<record_id>", methods=["DELETE"])
 def delete_route(record_id: str):
     return delete(record_id)
+
+
+@club_memberships_bp.route("/<record_id>/kick", methods=["POST"])
+@require_auth
+def kick_route(record_id: str):
+    payload = request.get_json(silent=True) or {}
+    return kick(record_id, payload)

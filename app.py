@@ -2,7 +2,7 @@
 from importlib import import_module
 from pathlib import Path
 
-from flask import Blueprint, Flask, jsonify
+from flask import Blueprint, Flask, jsonify, send_from_directory
 
 
 def _load_env_file() -> None:
@@ -37,6 +37,25 @@ def create_app() -> Flask:
             if isinstance(value, Blueprint):
                 app.register_blueprint(value)
                 registered_prefixes.append(value.url_prefix or "")
+
+    # Create any new tables that don't yet exist. Import engine here (after
+    # _load_env_file) so DATABASE_URL is already set from .env.
+    from training.db import engine
+    from training.club_memberships.models import ClubKickLog
+    ClubKickLog.__table__.create(engine, checkfirst=True)
+
+    @app.after_request
+    def add_cors_headers(response):
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Admin-User-Id"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        return response
+
+    images_dir = Path(__file__).resolve().parent / "images"
+
+    @app.get("/images/<path:filename>")
+    def serve_image(filename):
+        return send_from_directory(images_dir, filename)
 
     @app.get("/health")
     def health():

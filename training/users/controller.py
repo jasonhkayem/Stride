@@ -1,14 +1,19 @@
 ﻿from __future__ import annotations
 
+import uuid
+from pathlib import Path
 from typing import Any, Dict
 
-from flask import jsonify
+from flask import g, jsonify, request
 
 from training.common.crud_service import NotFoundError
 from training.services.strava_oauth_service import StravaOAuthError
 
 from .schemas import UserSchema
 from .service import UserService
+
+_IMAGES_DIR = Path(__file__).resolve().parent.parent.parent / "images"
+_ALLOWED_IMAGE_EXTS = {"jpg", "jpeg", "png", "gif", "webp"}
 
 
 service = UserService()
@@ -62,6 +67,8 @@ def search_by_username(query: str, limit: int = 10):
 
 
 def update(record_id: str, payload: Dict[str, Any]):
+    if g.current_user_id != record_id and g.current_role != "super_admin":
+        return jsonify({"error": "forbidden"}), 403
     try:
         item = service.update(record_id, payload)
         return jsonify(schema.dump(item)), 200
@@ -81,6 +88,29 @@ def delete(record_id: str):
         return jsonify({"error": str(exc)}), 404
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"error": "internal_server_error", "detail": str(exc)}), 500
+
+
+def upload_avatar(record_id: str):
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    file = request.files["file"]
+    if not file or file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    if ext not in _ALLOWED_IMAGE_EXTS:
+        return jsonify({"error": "File type not allowed. Use JPG, PNG, GIF, or WebP"}), 400
+    avatars_dir = _IMAGES_DIR / "avatars"
+    avatars_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"avatar_{record_id}_{uuid.uuid4().hex}.{ext}"
+    file.save(str(avatars_dir / filename))
+    profile_picture_url = f"/images/avatars/{filename}"
+    try:
+        item = service.update(record_id, {"profile_picture_url": profile_picture_url})
+        return jsonify(schema.dump(item)), 200
+    except NotFoundError as exc:
+        return jsonify({"error": str(exc)}), 404
     except Exception as exc:
         return jsonify({"error": "internal_server_error", "detail": str(exc)}), 500
 

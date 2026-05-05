@@ -29,12 +29,43 @@ class ActivityService(CRUDService):
 
         normalized = str(strava_type).strip().lower()
         mapping = {
+            # running
             "run": "run",
             "virtualrun": "run",
+            "trailrun": "run",
+            # cycling
             "ride": "bike",
             "virtualride": "bike",
             "ebikeride": "bike",
+            "mountainbikeride": "bike",
+            "gravelride": "bike",
+            "handcycle": "bike",
+            "velomobile": "bike",
+            # swimming
             "swim": "swim",
+            # walking / hiking
+            "walk": "walk",
+            "hike": "walk",
+            # strength / gym
+            "weighttraining": "weights",
+            "workout": "weights",
+            "crosstraining": "weights",
+            "elliptical": "weights",
+            "stairstepper": "weights",
+            "rockclimbing": "weights",
+            "rowing": "weights",
+            "tennis": "weights",
+            "soccer": "weights",
+            "basketball": "weights",
+            "badminton": "weights",
+            "golf": "weights",
+            "boxing": "weights",
+            "martialarts": "weights",
+            # mobility / yoga
+            "yoga": "mobility",
+            "pilates": "mobility",
+            "stretching": "mobility",
+            "mobility": "mobility",
         }
         return mapping.get(normalized)
 
@@ -83,6 +114,24 @@ class ActivityService(CRUDService):
             ).scalar_one_or_none()
             if integration is None:
                 raise ActivitySyncError("Strava is not connected for this user")
+
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
+            if integration.token_expires_at is not None and integration.token_expires_at <= now:
+                if not integration.refresh_token:
+                    raise ActivitySyncError("Strava access token expired and no refresh token is stored")
+                try:
+                    new_tokens = self.strava_oauth_service.refresh_access_token(integration.refresh_token)
+                except StravaOAuthError as exc:
+                    raise ActivitySyncError(str(exc)) from exc
+
+                integration.access_token = new_tokens["access_token"]
+                if new_tokens.get("refresh_token"):
+                    integration.refresh_token = new_tokens["refresh_token"]
+                expires_at = new_tokens.get("expires_at")
+                if expires_at:
+                    integration.token_expires_at = datetime.fromtimestamp(
+                        int(expires_at), tz=timezone.utc
+                    ).replace(tzinfo=None)
 
             existing_strava_ids = {
                 value
@@ -141,8 +190,8 @@ class ActivityService(CRUDService):
                     moving_time = row.get("moving_time")
 
                     try:
-                        distance_km = float(distance_m) / 1000.0
-                        duration_sec = int(moving_time)
+                        distance_km = float(distance_m or 0) / 1000.0
+                        duration_sec = int(moving_time or 0)
                     except (TypeError, ValueError):
                         skipped_invalid += 1
                         continue
@@ -150,6 +199,43 @@ class ActivityService(CRUDService):
                     if timestamp is None or distance_km < 0 or duration_sec < 0:
                         skipped_invalid += 1
                         continue
+
+                    polyline = (row.get("map") or {}).get("summary_polyline") or None
+
+                    avg_hr_raw = row.get("average_heartrate")
+                    try:
+                        avg_hr = float(avg_hr_raw) if avg_hr_raw is not None else None
+                    except (TypeError, ValueError):
+                        avg_hr = None
+
+                    # Fetch per-lap data from the detail endpoint (best-effort)
+                    laps = None
+                    try:
+                        detail = self.strava_oauth_service.fetch_activity_detail(
+                            access_token=integration.access_token,
+                            activity_id=strava_id,
+                        )
+                        raw_laps = detail.get("laps") or []
+                        if raw_laps:
+                            parsed_laps = []
+                            for i, lap in enumerate(raw_laps):
+                                try:
+                                    lap_dist_m = float(lap.get("distance") or 0)
+                                    lap_dur = int(lap.get("moving_time") or lap.get("elapsed_time") or 0)
+                                    lap_hr_raw = lap.get("average_heartrate")
+                                    lap_hr = round(float(lap_hr_raw), 1) if lap_hr_raw is not None else None
+                                    parsed_laps.append({
+                                        "lap_index": int(lap.get("lap_index") or lap.get("split") or (i + 1)),
+                                        "distance_km": round(lap_dist_m / 1000.0, 3),
+                                        "duration_sec": lap_dur,
+                                        "avg_hr": lap_hr,
+                                    })
+                                except (TypeError, ValueError):
+                                    continue
+                            if parsed_laps:
+                                laps = parsed_laps
+                    except StravaOAuthError:
+                        pass  # best-effort: don't fail the sync if detail fetch fails
 
                     session.add(
                         Activity(
@@ -159,6 +245,9 @@ class ActivityService(CRUDService):
                             distance=round(distance_km, 3),
                             duration=duration_sec,
                             timestamp=timestamp,
+                            route_polyline=polyline if polyline else None,
+                            average_heart_rate=avg_hr,
+                            laps=laps,
                         )
                     )
                     existing_strava_ids.add(strava_id)

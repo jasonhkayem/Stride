@@ -23,3 +23,4 @@ class UserSchema(SQLAlchemySchema):
     profile_picture_url = fields.String(dump_only=True)
     strava_athlete_id = fields.String(dump_only=True)
     strava_connected_at = fields.DateTime(dump_only=True)
+    weekly_goal_km = fields.Float(allow_none=True, load_default=None)

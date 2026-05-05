@@ -17,3 +17,18 @@ class ClubMembership(Base):
     role = Column(Enum("member", "club_admin", name="club_membership_role_enum"), nullable=False)
     status = Column(Enum("pending", "approved", "rejected", name="club_membership_status_enum"), nullable=False)
     joined_at = Column(DateTime, nullable=True)
+
+
+class ClubKickLog(Base):
+    """
+    Audit log when a club admin removes a member.
+    """
+
+    __tablename__ = "club_kick_logs"
+
+    log_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    club_id = Column(UUID(as_uuid=True), ForeignKey("clubs.club_id"), nullable=False)
+    kicked_user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False)
+    kicked_by = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False)
+    reason = Column(Text, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())

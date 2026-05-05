@@ -71,12 +71,19 @@ def delete(record_id: str):
         return jsonify({"error": "internal_server_error", "detail": str(exc)}), 500
 
 
-def reply(record_id: str, payload: Dict[str, Any]):
+def reply(record_id: str, payload: Dict[str, Any], caller_user_id: str = ""):
     try:
+        # Ownership check — session must belong to the authenticated user
+        if caller_user_id:
+            session_obj = service.get_by_id(record_id)
+            if session_obj is None:
+                return jsonify({"error": "session not found"}), 404
+            if str(session_obj.user_id) != caller_user_id:
+                return jsonify({"error": "forbidden"}), 403
+
         result = service.generate_reply(
             chatbot_id=record_id,
             user_message=payload.get("user_message", ""),
-            system_prompt=payload.get("system_prompt") or "You are a helpful running coach assistant.",
             max_context_messages=payload.get("max_context_messages", 20),
         )
         return jsonify(result), 200

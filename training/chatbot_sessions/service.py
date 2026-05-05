@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
 
+from training.activities.models import Activity
 from training.chatbot_session_messages.models import ChatbotSessionMessage
 from training.common.crud_service import CRUDService
 from training.db import SessionLocal
 from training.services.llm_service import LLMService
+from training.training_plan_versions.models import TrainingPlanVersion
 from training.training_plan_versions.service import TrainingPlanVersionService
+from training.user_training_plans.models import UserTrainingPlan
 
 from .models import ChatbotSession
 
@@ -30,6 +33,97 @@ class ChatbotSessionService(CRUDService):
             )
             return list(session.execute(stmt).scalars().all())
 
+    @staticmethod
+    def _fmt_pace(sec_per_km: Optional[float]) -> str:
+        if not sec_per_km:
+            return "--"
+        m, s = divmod(int(sec_per_km), 60)
+        return f"{m}:{s:02d}/km"
+
+    def _build_user_context(
+        self,
+        user_id: str,
+        related_activity_id: Optional[str] = None,
+    ) -> str:
+        """Query the DB and build a personalised system-prompt preamble."""
+        import uuid as _uuid
+
+        uid = _uuid.UUID(str(user_id))
+        lines: List[str] = [
+            "You are an expert running coach. Use the athlete's real data below to give "
+            "specific, personalised advice. Always reference their actual numbers when relevant. "
+            "Format every response using Markdown: use **bold** for key figures and emphasis, "
+            "bullet lists (- item) for multiple recommendations, and ## headers when covering "
+            "distinct topics. Never write a single wall of plain text. Keep responses under 150 "
+            "words unless user asks for detail.\n" 
+        ]
+
+        with SessionLocal() as session:
+            # --- Focused activity (reflection mode) ---
+            if related_activity_id:
+                act = session.execute(
+                    select(Activity).where(
+                        Activity.activity_id == _uuid.UUID(str(related_activity_id))
+                    )
+                ).scalar_one_or_none()
+                if act:
+                    duration_min = act.duration // 60
+                    pace = self._fmt_pace(act.duration / act.distance if act.distance else None)
+                    lines.append(
+                        f"ACTIVITY BEING REFLECTED ON:\n"
+                        f"  Type: {act.activity_type}, Date: {act.timestamp.date()}, "
+                        f"  Distance: {act.distance:.2f} km, Duration: {duration_min} min, "
+                        f"  Avg pace: {pace}\n"
+                    )
+
+            # --- Last 5 activities ---
+            recent = list(
+                session.execute(
+                    select(Activity)
+                    .where(Activity.user_id == uid)
+                    .order_by(Activity.timestamp.desc())
+                    .limit(5)
+                ).scalars().all()
+            )
+            if recent:
+                lines.append("RECENT ACTIVITIES (newest first):")
+                for act in recent:
+                    pace = self._fmt_pace(act.duration / act.distance if act.distance else None)
+                    lines.append(
+                        f"  - {act.timestamp.date()} | {act.activity_type} | "
+                        f"{act.distance:.2f} km | {act.duration // 60} min | {pace}"
+                    )
+                lines.append("")
+
+            # --- Current training plan ---
+            plan = session.execute(
+                select(UserTrainingPlan).where(UserTrainingPlan.user_id == uid)
+            ).scalar_one_or_none()
+            if plan and plan.current_version_id:
+                version = session.get(TrainingPlanVersion, plan.current_version_id)
+                if version and version.plan_snapshot:
+                    snap = version.plan_snapshot
+                    lines.append("CURRENT TRAINING PLAN:")
+                    if snap.get("goal_race"):
+                        lines.append(f"  Goal race: {snap['goal_race']}")
+                    if snap.get("goal_time"):
+                        lines.append(f"  Goal time: {snap['goal_time']}")
+                    if snap.get("duration_weeks"):
+                        lines.append(f"  Plan length: {snap['duration_weeks']} weeks")
+                    pace_targets = snap.get("pace_targets", {})
+                    if pace_targets:
+                        easy = pace_targets.get("easy", {})
+                        tempo = pace_targets.get("tempo", {})
+                        lines.append(
+                            f"  Easy pace: {easy.get('min','--')}–{easy.get('max','--')}"
+                        )
+                        lines.append(
+                            f"  Tempo pace: {tempo.get('min','--')}–{tempo.get('max','--')}"
+                        )
+                    lines.append("")
+
+        return "\n".join(lines)
+
     def _build_llm_messages(
         self,
         history: List[ChatbotSessionMessage],
@@ -46,7 +140,6 @@ class ChatbotSessionService(CRUDService):
         self,
         chatbot_id: str,
         user_message: str,
-        system_prompt: str = "You are a helpful running coach assistant.",
         max_context_messages: int = 20,
     ) -> Dict[str, Any]:
         if not user_message or not user_message.strip():
@@ -76,8 +169,16 @@ class ChatbotSessionService(CRUDService):
             history = list(session.execute(history_stmt).scalars().all())
             history.reverse()
 
+            # Build a data-aware system prompt from the user's actual records
+            system_prompt = self._build_user_context(
+                user_id=str(chat.user_id),
+                related_activity_id=(
+                    str(chat.related_activity_id) if chat.related_activity_id else None
+                ),
+            )
+
             llm_messages = self._build_llm_messages(history=history, system_prompt=system_prompt)
-            ai_text = self.llm_service.chat_completion(llm_messages)
+            ai_text = self.llm_service.chat_completion(llm_messages, max_tokens=600)
 
             ai_msg = ChatbotSessionMessage(
                 chatbot_id=chat.chatbot_id,

@@ -1,6 +1,14 @@
 ﻿from __future__ import annotations
 
+from pathlib import Path
 from typing import Dict, List
+
+# Load .env before importing anything that reads DATABASE_URL
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+except ImportError:
+    pass
 
 from training.db import SessionLocal
 from training.training_plan_templates.models import TrainingPlanTemplate

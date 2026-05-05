@@ -3,6 +3,8 @@ from __future__ import annotations
 from flask import Blueprint, request
 from marshmallow import Schema, ValidationError, fields
 
+from training.auth.decorators import require_auth
+
 from .controller import (
     create,
     delete,
@@ -15,6 +17,7 @@ from .controller import (
     strava_disconnect,
     strava_status,
     update,
+    upload_avatar,
 )
 from .schemas import UserSchema
 
@@ -69,6 +72,7 @@ def get_full_route(record_id: str):
 
 
 @users_bp.route("/<record_id>", methods=["PUT", "PATCH"])
+@require_auth
 def update_route(record_id: str):
     payload = request.get_json(silent=True) or {}
     try:
@@ -81,6 +85,11 @@ def update_route(record_id: str):
 @users_bp.route("/<record_id>", methods=["DELETE"])
 def delete_route(record_id: str):
     return delete(record_id)
+
+
+@users_bp.route("/<record_id>/avatar", methods=["POST"])
+def upload_avatar_route(record_id: str):
+    return upload_avatar(record_id)
 
 
 @users_bp.route("/<record_id>/strava/oauth/start", methods=["GET"])

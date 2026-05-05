@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from flask import Blueprint, request
+from flask import Blueprint, g, request
 from marshmallow import Schema, ValidationError, fields, validate
+
+from training.auth.decorators import require_auth
 
 from .controller import (
     create,
@@ -45,12 +47,16 @@ training_plan_suggestion_schema = TrainingPlanSuggestionSchema()
 
 
 @chatbot_sessions_bp.route("", methods=["POST"])
+@require_auth
 def create_route():
     payload = request.get_json(silent=True) or {}
     try:
         validated = create_schema.load(payload)
     except ValidationError as exc:
         return {"errors": exc.messages}, 400
+    # Prevent creating sessions on behalf of other users
+    if str(validated.get("user_id", "")) != g.current_user_id:
+        return {"error": "forbidden"}, 403
     return create(validated)
 
 
@@ -80,13 +86,14 @@ def delete_route(record_id: str):
 
 
 @chatbot_sessions_bp.route("/<record_id>/reply", methods=["POST"])
+@require_auth
 def reply_route(record_id: str):
     payload = request.get_json(silent=True) or {}
     try:
         validated = reply_schema.load(payload)
     except ValidationError as exc:
         return {"errors": exc.messages}, 400
-    return reply(record_id, validated)
+    return reply(record_id, validated, caller_user_id=g.current_user_id)
 
 
 @chatbot_sessions_bp.route("/<record_id>/messages", methods=["GET"])
@@ -102,6 +109,7 @@ def list_messages_route(record_id: str):
 
 
 @chatbot_sessions_bp.route("/<record_id>/suggest_training_plan_actions", methods=["POST"])
+@require_auth
 def suggest_training_plan_actions_route(record_id: str):
     payload = request.get_json(silent=True) or {}
     try:

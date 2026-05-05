@@ -12,7 +12,7 @@ class ClubSchema(SQLAlchemySchema):
         load_instance = False
 
     club_id = fields.UUID(dump_only=True)
-    name = fields.String(required=True)
+    name = fields.String(required=True, validate=validate.Length(min=1, error="Club name cannot be empty."))
     description = fields.String()
     created_by = fields.UUID(required=True)
     created_at = fields.DateTime(dump_only=True)

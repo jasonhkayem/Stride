@@ -23,3 +23,4 @@ class User(Base):
     profile_picture_url = Column(String(255), nullable=True)
     strava_athlete_id = Column(String(64), unique=True, nullable=True)
     strava_connected_at = Column(DateTime, nullable=True)
+    weekly_goal_km = Column(Float, nullable=True)

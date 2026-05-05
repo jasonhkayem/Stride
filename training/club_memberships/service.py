@@ -9,7 +9,7 @@ from sqlalchemy import select
 from training.common.crud_service import CRUDService
 from training.db import SessionLocal
 
-from .models import ClubMembership
+from .models import ClubKickLog, ClubMembership
 
 
 class ClubMembershipService(CRUDService):
@@ -44,3 +44,23 @@ class ClubMembershipService(CRUDService):
             session.commit()
             session.refresh(item)
             return item
+
+    def kick_member(self, membership_id: str, kicked_by: str, reason: Optional[str] = None) -> None:
+        with SessionLocal() as session:
+            item = session.get(ClubMembership, uuid.UUID(str(membership_id)))
+            if item is None:
+                raise ValueError("membership not found")
+            log = ClubKickLog(
+                club_id=item.club_id,
+                kicked_user_id=item.user_id,
+                kicked_by=uuid.UUID(str(kicked_by)),
+                reason=reason or None,
+            )
+            session.add(log)
+            session.delete(item)
+            session.commit()
+
+    def list_kick_logs(self, limit: int = 50) -> List[ClubKickLog]:
+        with SessionLocal() as session:
+            stmt = select(ClubKickLog).order_by(ClubKickLog.created_at.desc()).limit(limit)
+            return list(session.execute(stmt).scalars().all())

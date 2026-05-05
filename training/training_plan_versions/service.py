@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import json
 import re
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, delete as sa_delete
 
 from training.common.crud_service import CRUDService
 from training.db import SessionLocal
@@ -15,6 +15,7 @@ from training.training_plan_actions.models import TrainingPlanAction
 from training.training_plan_actions.schemas import TrainingPlanActionSchema
 from training.completed_actions.models import CompletedAction
 from training.completed_actions.schemas import CompletedActionSchema
+from training.completed_action_laps.models import CompletedActionLap
 from training.training_plan_adjustments.models import TrainingPlanAdjustment
 from training.training_plan_adjustments.schemas import TrainingPlanAdjustmentSchema
 from training.user_training_plans.models import UserTrainingPlan
@@ -312,6 +313,19 @@ class TrainingPlanVersionService(CRUDService):
         return distance
 
     @staticmethod
+    def _compute_runs_per_week(base_pace_sec_per_km: int, template_min: int) -> int:
+        """Bump weekly session count based on goal pace — faster targets need more volume."""
+        if base_pace_sec_per_km <= 240:    # ≤ 4:00/km — elite
+            return max(template_min, 6)
+        if base_pace_sec_per_km <= 270:    # ≤ 4:30/km — competitive
+            return max(template_min, 5)
+        if base_pace_sec_per_km <= 330:    # ≤ 5:30/km — intermediate
+            return max(template_min, 4)
+        if base_pace_sec_per_km <= 390:    # ≤ 6:30/km — recreational
+            return max(template_min, 3)
+        return template_min
+
+    @staticmethod
     def _pace_range(base_sec_per_km: int, slow: int, fast: int) -> Dict[str, str]:
         def fmt(sec: int) -> str:
             minutes = sec // 60
@@ -323,10 +337,102 @@ class TrainingPlanVersionService(CRUDService):
             "max": fmt(base_sec_per_km + fast),
         }
 
+    def _generate_weekly_sessions(
+        self,
+        goal_race: str,
+        duration_weeks: int,
+        min_runs_per_week: int,
+        pace_targets: Dict[str, Any],
+        goal_time: str,
+    ) -> Dict[str, Any]:
+        """Call the LLM to produce a week-by-week schedule."""
+
+        def _fmt(p: Dict) -> str:
+            return f"{p.get('min','--')}–{p.get('max','--')}"
+
+        system_prompt = (
+            "You are an expert running coach. Generate a structured training plan. "
+            "Return ONLY valid JSON — no markdown, no extra keys — with this exact shape: "
+            '{"plan_overview": "string", "weeks": [{"week": 1, "phase": "string", '
+            '"sessions": [{"day": "Monday", "type": "easy_run|tempo|long_run|interval|rest|cross_train", '
+            '"distance_km": 5.0, "duration_min": 30, "notes": "string"}]}]}. '
+            "Only include days that have a session (skip rest days or mark them type=rest with distance_km=0). "
+            "For interval sessions, notes MUST follow this format exactly: "
+            "'Xkm warmup, NxYm @ P/km, Xkm cooldown' — e.g. '1.5km warmup, 8x400m @ 4:10/km, 1.5km cooldown'. "
+            "For all other session types, keep notes under 10 words."
+        )
+
+        user_prompt = (
+            f"Create a {duration_weeks}-week {goal_race.replace('_', ' ')} training plan. "
+            f"Goal time: {goal_time}. "
+            f"Runs per week: {min_runs_per_week}. "
+            f"Pace targets — easy: {_fmt(pace_targets['easy'])}, "
+            f"tempo: {_fmt(pace_targets['tempo'])}, "
+            f"long run: {_fmt(pace_targets['long'])}, "
+            f"intervals: {_fmt(pace_targets['interval'])}, "
+            f"race pace: {_fmt(pace_targets['race_pace'])}. "
+            f"Structure the plan with base, build, peak, and taper phases across the {duration_weeks} weeks."
+        )
+
+        try:
+            content = self.llm.chat_completion(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=0.2,
+                max_tokens=3000,
+            )
+        except LLMServiceError as exc:
+            raise ValueError(str(exc)) from exc
+
+        return self._extract_json(content)
+
+    def _reset_plan_versions(self, session, uid) -> None:
+        """Delete all versions (and related rows) for a user plan, reset current_version_id."""
+        existing_versions = list(
+            session.execute(
+                select(TrainingPlanVersion).where(TrainingPlanVersion.user_plan_id == uid)
+            ).scalars().all()
+        )
+        version_ids = [v.version_id for v in existing_versions]
+        if not version_ids:
+            return
+
+        action_ids = list(
+            session.execute(
+                select(TrainingPlanAction.action_id).where(TrainingPlanAction.version_id.in_(version_ids))
+            ).scalars().all()
+        )
+        if action_ids:
+            session.execute(sa_delete(CompletedActionLap).where(
+                CompletedActionLap.completed_action_id.in_(
+                    select(CompletedAction.id).where(CompletedAction.training_plan_action_id.in_(action_ids))
+                )
+            ))
+            session.execute(sa_delete(CompletedAction).where(
+                CompletedAction.training_plan_action_id.in_(action_ids)
+            ))
+        session.execute(sa_delete(TrainingPlanAdjustment).where(
+            TrainingPlanAdjustment.user_training_plan_id == uid
+        ))
+        session.execute(sa_delete(TrainingPlanAction).where(
+            TrainingPlanAction.version_id.in_(version_ids)
+        ))
+        plan = session.get(UserTrainingPlan, uid)
+        if plan:
+            plan.current_version_id = None
+        session.flush()
+        session.execute(sa_delete(TrainingPlanVersion).where(
+            TrainingPlanVersion.user_plan_id == uid
+        ))
+        session.flush()
+
     def generate_from_template(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         user_plan_id = payload.get("user_plan_id")
         template_id = payload.get("template_id")
         goal_time = payload.get("goal_time")
+        reset = bool(payload.get("reset", False))
         if not user_plan_id:
             raise ValueError("user_plan_id is required")
         if not template_id:
@@ -354,27 +460,46 @@ class TrainingPlanVersionService(CRUDService):
                 "interval": self._pace_range(base_pace, -15, -5),
             }
 
-            max_version_stmt = select(func.max(TrainingPlanVersion.version_number)).where(
-                TrainingPlanVersion.user_plan_id == uid
+            template_min = (tpl.structure or {}).get("min_runs_per_week", 3)
+            min_runs = self._compute_runs_per_week(base_pace, template_min)
+
+            llm_plan = self._generate_weekly_sessions(
+                goal_race=tpl.goal_race,
+                duration_weeks=tpl.duration_weeks,
+                min_runs_per_week=min_runs,
+                pace_targets=pace_targets,
+                goal_time=str(goal_time),
             )
-            next_version = int(session.execute(max_version_stmt).scalar() or 0) + 1
+
+            if reset:
+                self._reset_plan_versions(session, uid)
+                plan = session.get(UserTrainingPlan, uid)
+                plan.template_id = tpl.template_id
+                next_version = 1
+            else:
+                max_version_stmt = select(func.max(TrainingPlanVersion.version_number)).where(
+                    TrainingPlanVersion.user_plan_id == uid
+                )
+                next_version = int(session.execute(max_version_stmt).scalar() or 0) + 1
 
             plan_snapshot = {
                 "source": "template",
                 "template_id": str(tpl.template_id),
                 "goal_race": tpl.goal_race,
                 "duration_weeks": tpl.duration_weeks,
-                "min_runs_per_week": (tpl.structure or {}).get("min_runs_per_week"),
+                "min_runs_per_week": min_runs,
                 "goal_time": str(goal_time),
                 "pace_targets": pace_targets,
+                "plan_overview": llm_plan.get("plan_overview", ""),
+                "weeks": llm_plan.get("weeks", []),
             }
 
             version = TrainingPlanVersion(
                 user_plan_id=uid,
                 version_number=next_version,
                 plan_snapshot=plan_snapshot,
-                created_by="system",
-                change_summary="Template-based plan with pace targets",
+                created_by="ai",
+                change_summary=f"AI-generated {tpl.goal_race} plan — goal {goal_time}",
             )
             session.add(version)
             session.flush()

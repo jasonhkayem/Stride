@@ -2,7 +2,8 @@
 
 from typing import Any, Dict
 
-from flask import jsonify
+from flask import g, jsonify
+from sqlalchemy.exc import IntegrityError
 
 from training.common.crud_service import NotFoundError
 
@@ -15,9 +16,12 @@ schema = ClubMembershipSchema()
 
 
 def create(payload: Dict[str, Any]):
+    payload["user_id"] = g.current_user_id
     try:
         item = service.create(payload)
         return jsonify(schema.dump(item)), 201
+    except IntegrityError as exc:
+        return jsonify({"error": "conflict", "detail": str(exc.orig)}), 409
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     except Exception as exc:
@@ -92,6 +96,16 @@ def delete(record_id: str):
         return jsonify({"status": "deleted"}), 200
     except NotFoundError as exc:
         return jsonify({"error": str(exc)}), 404
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"error": "internal_server_error", "detail": str(exc)}), 500
+
+
+def kick(record_id: str, payload: Dict[str, Any]):
+    try:
+        service.kick_member(record_id, g.current_user_id, payload.get("reason"))
+        return jsonify({"status": "kicked"}), 200
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     except Exception as exc:

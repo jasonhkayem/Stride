@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from flask import Blueprint, request
-from marshmallow import Schema, ValidationError, fields
+from marshmallow import EXCLUDE, Schema, ValidationError, fields
+
+from training.auth.decorators import require_auth
 
 from .controller import create, delete, get_by_id, list_all, sync_from_strava, update
 from .schemas import ActivitySchema
@@ -14,7 +16,9 @@ update_schema = ActivitySchema(partial=True)
 
 
 class ActivityStravaSyncSchema(Schema):
-    user_id = fields.UUID(required=True)
+    class Meta:
+        unknown = EXCLUDE
+
     per_page = fields.Integer(load_default=30)
     page = fields.Integer(load_default=1)
     max_pages = fields.Integer(load_default=1)
@@ -26,6 +30,7 @@ sync_schema = ActivityStravaSyncSchema()
 
 
 @activities_bp.route("", methods=["POST"])
+@require_auth
 def create_route():
     payload = request.get_json(silent=True) or {}
     try:
@@ -46,6 +51,7 @@ def get_route(record_id: str):
 
 
 @activities_bp.route("/<record_id>", methods=["PUT", "PATCH"])
+@require_auth
 def update_route(record_id: str):
     payload = request.get_json(silent=True) or {}
     try:
@@ -56,16 +62,17 @@ def update_route(record_id: str):
 
 
 @activities_bp.route("/<record_id>", methods=["DELETE"])
+@require_auth
 def delete_route(record_id: str):
     return delete(record_id)
 
 
 @activities_bp.route("/strava/sync", methods=["POST"])
+@require_auth
 def strava_sync_route():
     payload = request.get_json(silent=True) or {}
     try:
         validated = sync_schema.load(payload)
     except ValidationError as exc:
         return {"errors": exc.messages}, 400
-    validated["user_id"] = str(validated["user_id"])
     return sync_from_strava(validated)

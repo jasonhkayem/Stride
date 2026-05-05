@@ -3,7 +3,7 @@
 from flask import Blueprint, request
 from marshmallow import Schema, ValidationError, fields
 
-from .controller import login, me, signup
+from .controller import forgot_password, login, me, reset_password, signup
 
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
@@ -18,7 +18,7 @@ class SignupSchema(Schema):
 
 class LoginSchema(Schema):
     email = fields.Email(required=True)
-    password = fields.String(required=False, allow_none=True)
+    password = fields.String(required=True)
 
 
 signup_schema = SignupSchema()
@@ -43,6 +43,18 @@ def login_route():
     except ValidationError as exc:
         return {"errors": exc.messages}, 400
     return login(validated)
+
+
+@auth_bp.route("/forgot-password", methods=["POST"])
+def forgot_password_route():
+    payload = request.get_json(silent=True) or {}
+    return forgot_password(payload)
+
+
+@auth_bp.route("/reset-password", methods=["POST"])
+def reset_password_route():
+    payload = request.get_json(silent=True) or {}
+    return reset_password(payload)
 
 
 @auth_bp.route("/me/<user_id>", methods=["GET"])

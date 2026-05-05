@@ -143,6 +143,18 @@ class UserService(CRUDService):
             if user is None:
                 raise ValueError("user not found")
 
+            # If another account already holds this athlete_id, clear it first.
+            # Flush immediately so the unique constraint is released before we assign
+            # the athlete_id to the current user — SQLAlchemy would otherwise batch
+            # both UPDATEs and execute them in an order that violates the constraint.
+            other = session.execute(
+                select(User).where(User.strava_athlete_id == str(athlete_id), User.user_id != uid)
+            ).scalar_one_or_none()
+            if other is not None:
+                other.strava_athlete_id = None
+                other.strava_connected_at = None
+                session.flush()
+
             user.strava_athlete_id = str(athlete_id)
             user.strava_connected_at = datetime.utcnow()
 

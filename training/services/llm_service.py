@@ -23,7 +23,7 @@ class LLMService:
         self.api_url = os.getenv("LLM_API_URL", "https://api.openai.com/v1/chat/completions").strip()
         self.api_key = os.getenv("LLM_API_KEY", "").strip()
         self.model = os.getenv("LLM_MODEL", "gpt-4.1-mini").strip()
-        self.timeout_sec = int(os.getenv("LLM_TIMEOUT_SEC", "30"))
+        self.timeout_sec = int(os.getenv("LLM_TIMEOUT_SEC", "90"))
         self.auth_scheme = os.getenv("LLM_AUTH_SCHEME", "Bearer").strip()
 
     def _require_config(self):

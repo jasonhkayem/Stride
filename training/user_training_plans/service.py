@@ -33,7 +33,14 @@ class UserTrainingPlanService(CRUDService):
                 select(UserTrainingPlan).where(UserTrainingPlan.user_id == self._coerce_pk(user_id))
             ).scalar_one_or_none()
             if existing is not None:
-                raise ValueError("user already has an active training plan")
+                has_version = session.execute(
+                    select(TrainingPlanVersion)
+                    .where(TrainingPlanVersion.user_plan_id == existing.user_plan_id)
+                    .limit(1)
+                ).scalar_one_or_none()
+                if has_version is not None:
+                    raise ValueError("user already has an active training plan")
+                return UserTrainingPlanSchema().dump(existing)
 
         return super().create(payload)
 

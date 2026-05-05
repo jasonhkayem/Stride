@@ -51,6 +51,7 @@ class GenerateFromTemplateSchema(Schema):
     user_plan_id = fields.UUID(required=True)
     template_id = fields.UUID(required=True)
     goal_time = fields.String(required=True)
+    reset = fields.Boolean(load_default=False)
 
 
 generate_from_template_schema = GenerateFromTemplateSchema()
