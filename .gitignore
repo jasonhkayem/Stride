@@ -42,6 +42,7 @@ ehthumbs.db
 
 # Claude Code tool files
 .claude/
+CLAUDE.md
 
 # Build / distribution
 dist/
