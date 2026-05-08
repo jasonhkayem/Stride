@@ -40,10 +40,11 @@ def create_app() -> Flask:
 
     # Create any new tables that don't yet exist. Import engine here (after
     # _load_env_file) so DATABASE_URL is already set from .env.
-    from training.db import engine
+    from training.db import Base, engine
     from training.club_memberships.models import ClubKickLog
     from training.auth.models import PasswordResetToken
     from training.completed_plan_sessions.models import CompletedPlanSession
+    Base.metadata.create_all(engine)
     ClubKickLog.__table__.create(engine, checkfirst=True)
     PasswordResetToken.__table__.create(engine, checkfirst=True)
     CompletedPlanSession.__table__.create(engine, checkfirst=True)
