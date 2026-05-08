@@ -1,0 +1,17 @@
+<svg width="800" height="300" viewBox="0 0 800 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="800" height="300" fill="#F5F6F8"/>
+  <defs>
+    <filter id="motionBlur">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.2 0" />
+    </filter>
+  </defs>
+  <g transform="translate(140, 105)">
+    <text x="5" y="65" font-size="80" font-weight="700" font-family="'Space Grotesk', system-ui, sans-serif" fill="#111827" letter-spacing="0">S</text>
+    <text x="62" y="65" font-size="80" font-weight="700" font-family="'Space Grotesk', system-ui, sans-serif" fill="#111827" filter="url(#motionBlur)" opacity="0.85" letter-spacing="0">t</text>
+    <text x="111" y="65" font-size="80" font-weight="700" font-family="'Space Grotesk', system-ui, sans-serif" fill="#111827" filter="url(#motionBlur)" opacity="0.85" letter-spacing="0">r</text>
+    <rect x="165" y="30" width="10" height="35" fill="#111827" rx="1" />
+    <circle cx="170" cy="18" r="6" fill="#16A34A" />
+    <text x="187" y="65" font-size="80" font-weight="700" font-family="'Space Grotesk', system-ui, sans-serif" fill="#111827" letter-spacing="0">d</text>
+    <text x="246" y="65" font-size="80" font-weight="700" font-family="'Space Grotesk', system-ui, sans-serif" fill="#111827" letter-spacing="0">e</text>
+  </g>
+</svg>
