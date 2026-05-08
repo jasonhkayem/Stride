@@ -45,6 +45,9 @@ ehthumbs.db
 .claude/
 CLAUDE.md
 
+# Dev scripts
+scripts/
+
 # Build / distribution
 dist/
 build/
