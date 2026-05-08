@@ -2,16 +2,14 @@
 
 from datetime import date
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, g, jsonify, request
+
+from training.auth.decorators import require_auth
 
 from .controller import kick_logs, overview, top_users, trends, users
 
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
-
-
-def _admin_header() -> str:
-    return (request.headers.get("X-Admin-User-Id") or "").strip()
 
 
 def _int_param(name: str, default: int) -> int:
@@ -27,42 +25,47 @@ def _date_param(name: str):
 
 
 @admin_bp.route("/overview", methods=["GET"])
+@require_auth
 def overview_route():
     try:
         days = _int_param("days", 30)
     except ValueError:
         return jsonify({"error": "days must be an integer"}), 400
-    return overview(admin_user_id=_admin_header(), days=days)
+    return overview(admin_user_id=g.current_user_id, days=days)
 
 
 @admin_bp.route("/trends", methods=["GET"])
+@require_auth
 def trends_route():
     try:
         days = _int_param("days", 30)
     except ValueError:
         return jsonify({"error": "days must be an integer"}), 400
-    return trends(admin_user_id=_admin_header(), days=days)
+    return trends(admin_user_id=g.current_user_id, days=days)
 
 
 @admin_bp.route("/top_users", methods=["GET"])
+@require_auth
 def top_users_route():
     try:
         limit = _int_param("limit", 10)
     except ValueError:
         return jsonify({"error": "limit must be an integer"}), 400
-    return top_users(admin_user_id=_admin_header(), limit=limit)
+    return top_users(admin_user_id=g.current_user_id, limit=limit)
 
 
 @admin_bp.route("/kick_logs", methods=["GET"])
+@require_auth
 def kick_logs_route():
     try:
         limit = _int_param("limit", 50)
     except ValueError:
         return jsonify({"error": "limit must be an integer"}), 400
-    return kick_logs(admin_user_id=_admin_header(), limit=limit)
+    return kick_logs(admin_user_id=g.current_user_id, limit=limit)
 
 
 @admin_bp.route("/users", methods=["GET"])
+@require_auth
 def users_route():
     try:
         page = _int_param("page", 1)
@@ -76,7 +79,7 @@ def users_route():
     except ValueError:
         return jsonify({"error": "from_date and to_date must use YYYY-MM-DD"}), 400
     return users(
-        admin_user_id=_admin_header(),
+        admin_user_id=g.current_user_id,
         page=page,
         page_size=page_size,
         search=search,

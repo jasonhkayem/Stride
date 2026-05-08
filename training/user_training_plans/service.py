@@ -87,6 +87,21 @@ class UserTrainingPlanService(CRUDService):
             result["adjustments"] = TrainingPlanAdjustmentSchema().dump(adjustments, many=True)
             return result
 
+    def delete(self, record_id: str) -> bool:
+        from training.common.crud_service import NotFoundError
+        pk = self._coerce_pk(record_id)
+        with SessionLocal() as session:
+            plan = session.get(UserTrainingPlan, pk)
+            if plan is None:
+                raise NotFoundError("user training plan not found")
+            uid = plan.user_plan_id
+            from training.training_plan_versions.service import TrainingPlanVersionService
+            TrainingPlanVersionService()._reset_plan_versions(session, uid)
+            plan = session.get(UserTrainingPlan, uid)
+            session.delete(plan)
+            session.commit()
+        return True
+
     def list_all_with_related(self) -> List[Dict[str, Any]]:
         plans = self.list_all()
         results: List[Dict[str, Any]] = []

@@ -1,5 +1,5 @@
 async function renderProfile() {
-  await Promise.all([ensureActivitiesLoaded(), ensureUsersLoaded(), ensureStravaStatusLoaded()]);
+  await Promise.all([ensureActivitiesLoaded(), ensureUsersLoaded(), ensureStravaStatusLoaded(), ensureActivityLikesLoaded(), ensureActivityCommentsLoaded()]);
   const [followers, following] = await Promise.all([
     apiFetch(`/user_follows/followers/${state.userId}`).catch(() => []),
     apiFetch(`/user_follows/following/${state.userId}`).catch(() => []),
@@ -83,6 +83,7 @@ async function renderProfile() {
       </section>
 
       ${renderActivityModal()}
+      ${renderDeleteActivityModal()}
       ${renderAddActivityModal()}
       ${renderEditProfileModal(user)}
       ${renderFollowsListModal()}
@@ -97,7 +98,7 @@ async function renderProfile() {
 }
 
 async function renderPublicProfile(userId) {
-  await Promise.all([ensureUsersLoaded(), ensureActivitiesLoaded(), ensureFollowingLoaded()]);
+  await Promise.all([ensureUsersLoaded(), ensureActivitiesLoaded(), ensureFollowingLoaded(), ensureActivityLikesLoaded(), ensureActivityCommentsLoaded()]);
   const profileUser = state.usersById[userId] || (await apiFetch(`/users/${userId}`));
   const [followers, following] = await Promise.all([
     apiFetch(`/user_follows/followers/${userId}`).catch(() => []),
@@ -166,6 +167,7 @@ async function renderPublicProfile(userId) {
       </section>
 
       ${renderActivityModal()}
+      ${renderDeleteActivityModal()}
       ${ownProfile ? renderAddActivityModal() : ""}
       ${ownProfile ? renderEditProfileModal(profileUser) : ""}
       ${renderFollowsListModal()}
@@ -351,141 +353,13 @@ function renderEditProfileModal(user) {
 }
 
 function attachProfileActivityHandlers() {
-  const modal = document.getElementById("activityModal");
-  const modalClose = document.getElementById("modalClose");
-  if (!modal) return;
-
-  const modalActions = document.getElementById("modalActivityActions");
-  let currentActivityId = null;
-
-  const closeModal = () => {
-    modal.classList.remove("open");
-    currentActivityId = null;
-    if (modalActions) modalActions.classList.add("d-none");
-  };
-
-  const tiles = Array.from(app.querySelectorAll(".activity-tile"));
-  const modalTitle = modal.querySelector(".modal-title");
-  const modalMeta = modal.querySelector(".modal-meta");
-  const modalStats = modal.querySelector("#modalStats");
-  const modalChips = modal.querySelector("#modalChips");
-  const modalMap = modal.querySelector("#modalMap");
-  const modalCharts = modal.querySelector("#modalCharts");
-
-  tiles.forEach((tile) => {
+  Array.from(app.querySelectorAll(".activity-tile")).forEach((tile) => {
     tile.addEventListener("click", () => {
-      modalTitle.textContent = tile.dataset.title || "Activity";
-      modalMeta.textContent = tile.dataset.meta || "";
-      modalStats.innerHTML = `
-        <div class="modal-stat">
-          <span class="label">Type</span>
-          <span class="value">${escapeHtml(tile.dataset.type || "Activity")}</span>
-        </div>
-        <div class="modal-stat">
-          <span class="label">Summary</span>
-          <span class="value">${escapeHtml(tile.dataset.meta || "")}</span>
-        </div>
-      `;
-      modalChips.innerHTML = `<span class="chip">${escapeHtml(tile.dataset.type || "Activity")}</span><span class="chip">Recent</span>`;
-
-      const hasMap = tile.dataset.hasMap === "true";
-      modalMap.style.display = hasMap ? "flex" : "none";
-      modalCharts.style.display = hasMap ? "block" : "none";
-      const lapChartsEl = document.getElementById("modalLapCharts");
-      if (lapChartsEl) lapChartsEl.style.display = "none";
-
-      // Populate user info for other people's tiles
-      const tileUserId = tile.dataset.userId;
-      const modalUserInfo = document.getElementById("modalUserInfo");
-      const modalUserAvatar = document.getElementById("modalUserAvatar");
-      const modalUserName = document.getElementById("modalUserName");
-      if (modalUserInfo) {
-        if (tileUserId && tileUserId !== state.userId) {
-          const tileUser = state.usersById[tileUserId];
-          modalUserAvatar.innerHTML = tileUser?.profile_picture_url
-            ? `<img src="${escapeHtml(API_BASE + tileUser.profile_picture_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
-            : "";
-          modalUserName.textContent = tileUser?.name || "Athlete";
-          modalUserName.dataset.userId = tileUserId;
-          modalUserInfo.classList.remove("d-none");
-        } else {
-          modalUserInfo.classList.add("d-none");
-        }
-      }
-
-      const activityId = tile.dataset.activityId || null;
-      const isOwn = activityId && tile.dataset.userId === state.userId;
-      currentActivityId = isOwn ? activityId : null;
-
-      if (modalActions) {
-        if (currentActivityId) {
-          modalActions.classList.remove("d-none");
-          modalActions.style.display = "flex";
-          modalActions.dataset.rawType = tile.dataset.rawType || "";
-          modalActions.dataset.rawTs = tile.dataset.rawTs || "";
-          modalActions.dataset.rawDist = tile.dataset.rawDist || "";
-          modalActions.dataset.rawDur = tile.dataset.rawDur || "";
-        } else {
-          modalActions.classList.add("d-none");
-        }
-      }
-
-      modal.classList.add("open");
+      const activityId = tile.dataset.activityId;
+      if (activityId) openActivityModal(activityId);
     });
   });
-
-  modalClose?.addEventListener("click", closeModal);
-  modal.addEventListener("click", (event) => {
-    if (event.target === modal) closeModal();
-  });
-
-  modal.querySelector("#modalUserName")?.addEventListener("click", () => {
-    const uid = modal.querySelector("#modalUserName")?.dataset.userId;
-    if (uid) { closeModal(); window.location.hash = `#/athlete/${uid}`; }
-  });
-
-  modal.querySelector("#modalDeleteBtn")?.addEventListener("click", async () => {
-    if (!currentActivityId) return;
-    if (!confirm("Delete this activity?")) return;
-    try {
-      await apiFetch(`/activities/${currentActivityId}`, { method: "DELETE" });
-      closeModal();
-      await ensureActivitiesLoaded(true);
-      await handleRoute();
-    } catch (err) {
-      alert(`Could not delete: ${err.message}`);
-    }
-  });
-
-  modal.querySelector("#modalEditBtn")?.addEventListener("click", () => {
-    if (!currentActivityId || !modalActions) return;
-    const editId = currentActivityId;
-    const rawType = modalActions.dataset.rawType || "run";
-    const rawTs = modalActions.dataset.rawTs || "";
-    const rawDist = modalActions.dataset.rawDist || "";
-    const rawDur = modalActions.dataset.rawDur || "";
-    closeModal();
-    const addModal = document.getElementById("addActivityModal");
-    if (!addModal) return;
-    const typeSelectEl2 = document.getElementById("activityTypeSelect");
-    if (typeSelectEl2) { typeSelectEl2.value = rawType; typeSelectEl2.dispatchEvent(new Event("change")); }
-    document.getElementById("activityDistanceInput").value = rawDist;
-    document.getElementById("activityDurationInput").value = rawDur;
-    if (rawTs) {
-      const local = new Date(new Date(rawTs).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-      document.getElementById("activityTimestampInput").value = local;
-    }
-    addModal.dataset.editActivityId = editId;
-    const titleEl = addModal.querySelector(".modal-meta");
-    if (titleEl) titleEl.textContent = "Edit Activity";
-    document.getElementById("addActivitySubmit").textContent = "Update Activity";
-    // Pre-populate HR and laps
-    const editActivity2 = state.activities.find((a) => String(a.activity_id) === String(editId));
-    const hrInputEl2 = document.getElementById("activityHrInput");
-    if (hrInputEl2) hrInputEl2.value = editActivity2?.average_heart_rate ? Math.round(editActivity2.average_heart_rate) : "";
-    if (editActivity2?.laps?.length && addModal._populateLapRows) addModal._populateLapRows(editActivity2.laps);
-    addModal.classList.add("open");
-  });
+  attachActivityModalInteractions();
 }
 
 function attachUserSearch() {
@@ -579,7 +453,7 @@ function attachSocialActions() {
         await toggleFollow(userId);
         await renderActivities();
       } catch (error) {
-        window.alert(`Follow action failed: ${error.message}`);
+        showToast(`Follow action failed: ${error.message}`, "error");
         button.disabled = false;
       }
     });
@@ -652,9 +526,11 @@ function attachEditProfileActions() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-      if (avatarPreview) avatarPreview.innerHTML = `<img src="${e.target.result}" alt="Preview" />`;
-      const heroAvatar = document.querySelector(".profile-avatar-lg img");
-      if (heroAvatar) heroAvatar.src = e.target.result;
+      const blobSrc = e.target.result;
+      if (avatarPreview) avatarPreview.innerHTML = `<img src="${blobSrc}" alt="Preview" />`;
+      // Update hero avatar regardless of whether an <img> already exists
+      const heroEl = document.querySelector(".profile-avatar-lg");
+      if (heroEl) heroEl.innerHTML = `<img src="${blobSrc}" alt="${escapeHtml(state.user?.name || "Avatar")}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
     };
     reader.readAsDataURL(file);
     if (avatarStatus) avatarStatus.textContent = "Uploading…";
@@ -676,9 +552,11 @@ function attachEditProfileActions() {
           state.usersById[state.userId] = state.users[idx];
         }
       }
-      if (avatarStatus) avatarStatus.textContent = "Photo updated.";
+      if (avatarStatus) avatarStatus.textContent = "";
+      showToast("Photo updated.");
     } catch (err) {
-      if (avatarStatus) avatarStatus.textContent = `Upload failed: ${err.message}`;
+      if (avatarStatus) avatarStatus.textContent = "";
+      showToast(`Upload failed: ${err.message}`, "error");
     }
   });
 
@@ -704,11 +582,16 @@ function attachEditProfileActions() {
         method: "PATCH",
         body: JSON.stringify(payload),
       });
-      setAuth(updated, state.token);
+      // Merge API response into state.user (preserves fields not in the response)
+      state.user = { ...state.user, ...updated };
+      state.userId = state.user.user_id;
+      state.platformRole = state.user.platform_role || state.platformRole;
+      // Sync the users cache
       state.users = [];
       state.usersById = {};
-      await ensureUsersLoaded(true);
+      await ensureUsersLoaded();
       closeModal();
+      showToast("Profile updated.");
       await renderProfile();
     } catch (error) {
       errorEl.textContent = error.message;
@@ -733,7 +616,7 @@ function attachPublicProfileActions() {
       await toggleFollow(targetUserId);
       await renderPublicProfile(targetUserId);
     } catch (error) {
-      window.alert(`Follow action failed: ${error.message}`);
+      showToast(`Follow action failed: ${error.message}`, "error");
       followBtn.disabled = false;
     }
   });
@@ -768,7 +651,7 @@ function attachProfileStravaAction() {
         await renderProfile();
       }
     } catch (error) {
-      window.alert(`Strava action failed: ${error.message}`);
+      showToast(`Strava action failed: ${error.message}`, "error");
     } finally {
       button.disabled = false;
     }

@@ -38,7 +38,7 @@ def _create_user_plan(client, user, template_id) -> str:
         "user_id": user["user_id"],
         "template_id": template_id,
         "start_date": datetime.date.today().isoformat(),
-    })
+    }, headers=user["headers"])
     assert resp.status_code == 201, resp.get_json()
     return resp.get_json()["user_plan_id"]
 
@@ -56,7 +56,7 @@ def test_generate_from_template(client, user):
             "user_plan_id": user_plan_id,
             "template_id": template_id,
             "goal_time": "50:00",
-        })
+        }, headers=user["headers"])
 
     data = resp.get_json()
     assert resp.status_code == 201, data
@@ -81,7 +81,7 @@ def test_snapshot_contains_session_types(client, user):
             "user_plan_id": user_plan_id,
             "template_id": template_id,
             "goal_time": "50:00",
-        })
+        }, headers=user["headers"])
 
     assert resp.status_code == 201
     snap = resp.get_json()["plan_snapshot"]
@@ -116,7 +116,7 @@ def test_snapshot_has_multi_week_structure(client, user):
             "user_plan_id": user_plan_id,
             "template_id": template_id,
             "goal_time": "50:00",
-        })
+        }, headers=user["headers"])
 
     assert resp.status_code == 201
     weeks = resp.get_json()["plan_snapshot"]["weeks"]
@@ -144,7 +144,7 @@ def test_competitive_goal_produces_high_volume(client, user):
             "user_plan_id": user_plan_id,
             "template_id": template_id,
             "goal_time": "35:00",
-        })
+        }, headers=user["headers"])
 
     assert resp.status_code == 201
     snap = resp.get_json()["plan_snapshot"]
@@ -166,7 +166,7 @@ def test_apply_ai_actions(client, user):
             "user_plan_id": user_plan_id,
             "template_id": template_id,
             "goal_time": "50:00",
-        })
+        }, headers=user["headers"])
     assert gen.status_code == 201
     version_id = gen.get_json()["version"]["version_id"]
 
@@ -174,7 +174,7 @@ def test_apply_ai_actions(client, user):
         "version_id": version_id,
         "proposed_actions": [{"action": "adjust_volume", "percentage": 5, "scope": "next_week"}],
         "rationale": "Athlete is ready to increase training load safely.",
-    })
+    }, headers=user["headers"])
     data = resp.get_json()
     assert resp.status_code == 201, data
     assert "new_version" in data
@@ -194,14 +194,14 @@ def test_apply_ai_actions_invalid_action(client, user):
             "user_plan_id": user_plan_id,
             "template_id": template_id,
             "goal_time": "50:00",
-        })
+        }, headers=user["headers"])
     version_id = gen.get_json()["version"]["version_id"]
 
     resp = client.post("/training_plan_versions/apply_ai_actions", json={
         "version_id": version_id,
         "proposed_actions": [{"action": "do_magic"}],   # invalid action type
         "rationale": "Short",                            # too short rationale
-    })
+    }, headers=user["headers"])
     assert resp.status_code in (400, 422)
 
 

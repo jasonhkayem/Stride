@@ -48,8 +48,7 @@ A fitness coaching web application built as a final year CS project. Athletes ca
 ### 1. Clone and install dependencies
 
 ```bash
-pip install flask sqlalchemy marshmallow marshmallow-sqlalchemy \
-            psycopg2-binary python-dotenv pytest flask-cors
+pip install -r requirements.txt
 ```
 
 ### 2. Create the database
@@ -93,8 +92,7 @@ python -c "from training.db import Base, engine; Base.metadata.create_all(engine
 ### 5. Run the database patch for route polylines
 
 ```bash
-"C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d final_year_project \
-  -f scripts/db_patch_activity_reflection.sql
+psql -U postgres -d final_year_project -f scripts/db_patch_route_polyline.sql
 ```
 
 ### 6. Seed training plan templates
@@ -154,7 +152,7 @@ tests/test_security.py      — expired/malformed/tampered JWT, public endpoints
 ├── frontend/
 │   ├── index.html                  # Single-page app shell
 │   ├── assets/css/styles.css
-│   └── assets/js/app.js            # All frontend logic (routing, API calls, rendering)
+│   └── assets/js/                  # Frontend modules (state, router, activities, clubs, …)
 ├── training/
 │   ├── auth/                       # Signup, login, JWT utils, @require_auth decorator
 │   ├── activities/                 # Activity CRUD + Strava sync
@@ -210,7 +208,7 @@ tests/test_security.py      — expired/malformed/tampered JWT, public endpoints
 
 ## Notes
 
-- The `route_polyline` column on the `activities` table is added by `scripts/db_patch_activity_reflection.sql`. Run it once after initial table creation.
+- The `route_polyline` column on the `activities` table is added by `scripts/db_patch_route_polyline.sql`. Run it once after initial table creation.
 - Training plan templates must be seeded before generating plans.
 - Strava sync requires a connected Strava account via the OAuth flow in the profile page.
 - The AI coach formats all responses in Markdown, rendered in the UI via marked.js.

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import delete, exists, func, select
 
 from training.activities.models import Activity
 from training.chatbot_session_messages.models import ChatbotSessionMessage
@@ -136,6 +136,37 @@ class ChatbotSessionService(CRUDService):
             messages.append({"role": role, "content": item.content})
         return messages
 
+    def delete(self, record_id: str) -> bool:
+        pk = self._coerce_pk(record_id)
+        with SessionLocal() as session:
+            chat = session.execute(
+                select(ChatbotSession).where(ChatbotSession.chatbot_id == pk)
+            ).scalar_one_or_none()
+            if chat is None:
+                from training.common.crud_service import NotFoundError
+                raise NotFoundError("chatbot session not found")
+            session.execute(
+                delete(ChatbotSessionMessage).where(ChatbotSessionMessage.chatbot_id == pk)
+            )
+            session.delete(chat)
+            session.commit()
+            return True
+
+    def list_all(self) -> list:
+        with SessionLocal() as session:
+            stmt = (
+                select(ChatbotSession)
+                .where(
+                    exists(
+                        select(ChatbotSessionMessage.message_id).where(
+                            ChatbotSessionMessage.chatbot_id == ChatbotSession.chatbot_id
+                        )
+                    )
+                )
+                .order_by(ChatbotSession.created_at.desc())
+            )
+            return list(session.execute(stmt).scalars().all())
+
     def generate_reply(
         self,
         chatbot_id: str,
@@ -145,6 +176,9 @@ class ChatbotSessionService(CRUDService):
         if not user_message or not user_message.strip():
             raise ValueError("user_message is required")
 
+        # Block 1: read chat metadata — close before calling _build_user_context,
+        # which opens its own SessionLocal. With scoped_session a nested "with"
+        # calls session.close() on exit, rolling back any unflushed writes.
         with SessionLocal() as session:
             chat = session.execute(
                 select(ChatbotSession).where(ChatbotSession.chatbot_id == self._coerce_pk(chatbot_id))
@@ -152,8 +186,27 @@ class ChatbotSessionService(CRUDService):
             if chat is None:
                 raise ValueError("chatbot session not found")
 
+            existing_count = session.execute(
+                select(func.count()).select_from(ChatbotSessionMessage)
+                .where(ChatbotSessionMessage.chatbot_id == chat.chatbot_id)
+            ).scalar() or 0
+            is_first_message = existing_count == 0
+            chat_id = chat.chatbot_id
+            user_id = str(chat.user_id)
+            related_activity_id = (
+                str(chat.related_activity_id) if chat.related_activity_id else None
+            )
+
+        # Build system prompt outside any open session (safe nested SessionLocal call)
+        system_prompt = self._build_user_context(
+            user_id=user_id,
+            related_activity_id=related_activity_id,
+        )
+
+        # Block 2: write messages and call LLM
+        with SessionLocal() as session:
             user_msg = ChatbotSessionMessage(
-                chatbot_id=chat.chatbot_id,
+                chatbot_id=chat_id,
                 sender="user",
                 content=user_message.strip(),
             )
@@ -162,26 +215,18 @@ class ChatbotSessionService(CRUDService):
 
             history_stmt = (
                 select(ChatbotSessionMessage)
-                .where(ChatbotSessionMessage.chatbot_id == chat.chatbot_id)
+                .where(ChatbotSessionMessage.chatbot_id == chat_id)
                 .order_by(ChatbotSessionMessage.created_at.desc())
                 .limit(max_context_messages)
             )
             history = list(session.execute(history_stmt).scalars().all())
             history.reverse()
 
-            # Build a data-aware system prompt from the user's actual records
-            system_prompt = self._build_user_context(
-                user_id=str(chat.user_id),
-                related_activity_id=(
-                    str(chat.related_activity_id) if chat.related_activity_id else None
-                ),
-            )
-
             llm_messages = self._build_llm_messages(history=history, system_prompt=system_prompt)
             ai_text = self.llm_service.chat_completion(llm_messages, max_tokens=600)
 
             ai_msg = ChatbotSessionMessage(
-                chatbot_id=chat.chatbot_id,
+                chatbot_id=chat_id,
                 sender="assistant",
                 content=ai_text,
             )
@@ -189,12 +234,32 @@ class ChatbotSessionService(CRUDService):
             session.commit()
             session.refresh(ai_msg)
 
+            session_title: Optional[str] = None
+            if is_first_message:
+                try:
+                    title_messages = [
+                        {
+                            "role": "system",
+                            "content": (
+                                "Summarize what this coaching conversation is about in one brief "
+                                "sentence (10 words max). Reply with ONLY the sentence, no period at the end."
+                            ),
+                        },
+                        {"role": "user", "content": f'User asked their coach: "{user_message}"'},
+                    ]
+                    session_title = self.llm_service.chat_completion(title_messages, max_tokens=25)
+                    if session_title:
+                        session_title = session_title.strip().rstrip(".")
+                except Exception:
+                    session_title = None
+
             return {
-                "chatbot_id": str(chat.chatbot_id),
-                "user_message": user_msg.content,
+                "chatbot_id": str(chat_id),
+                "user_message": user_message.strip(),
                 "assistant_message": ai_msg.content,
                 "assistant_message_id": str(ai_msg.message_id),
                 "created_at": ai_msg.created_at,
+                "session_title": session_title,
             }
 
     @staticmethod
@@ -230,6 +295,7 @@ class ChatbotSessionService(CRUDService):
         if not user_prompt or not user_prompt.strip():
             raise ValueError("user_prompt is required")
 
+        # Block 1: read metadata only — close before _build_user_context
         with SessionLocal() as session:
             chat = session.execute(
                 select(ChatbotSession).where(ChatbotSession.chatbot_id == self._coerce_pk(chatbot_id))
@@ -237,31 +303,44 @@ class ChatbotSessionService(CRUDService):
             if chat is None:
                 raise ValueError("chatbot session not found")
 
+            existing_count = session.execute(
+                select(func.count()).select_from(ChatbotSessionMessage)
+                .where(ChatbotSessionMessage.chatbot_id == chat.chatbot_id)
+            ).scalar() or 0
+            is_first_message = existing_count == 0
+            chat_id = chat.chatbot_id
+            user_id = str(chat.user_id)
+
+        # Build personalised system prompt outside any open session
+        user_context = self._build_user_context(user_id=user_id)
+        schema_instruction = (
+            "Based on the athlete data above, suggest training plan adjustments. "
+            "Return ONLY valid JSON with this exact top-level shape: "
+            '{"proposed_actions":[{"action":"adjust_volume|adjust_intensity|insert_rest_day|reschedule_session",'
+            '"percentage":-20..10,"intensity_adjustment":-15..10,"date":"YYYY-MM-DD","from_date":"YYYY-MM-DD",'
+            '"to_date":"YYYY-MM-DD","scope":"next_week|current_week"}],"rationale":"string >= 10 chars"}. '
+            "Do not include markdown or extra keys."
+        )
+        system_prompt = user_context + "\n\n" + schema_instruction
+
+        # Block 2: write messages and call LLM
+        with SessionLocal() as session:
             user_msg = ChatbotSessionMessage(
-                chatbot_id=chat.chatbot_id,
+                chatbot_id=chat_id,
                 sender="user",
                 content=user_prompt.strip(),
             )
             session.add(user_msg)
             session.flush()
 
-            schema_instruction = (
-                "You are a running coach assistant. "
-                "Return ONLY valid JSON with this exact top-level shape: "
-                '{"proposed_actions":[{"action":"adjust_volume|adjust_intensity|insert_rest_day|reschedule_session",'
-                '"percentage":-20..10,"intensity_adjustment":-15..10,"date":"YYYY-MM-DD","from_date":"YYYY-MM-DD",'
-                '"to_date":"YYYY-MM-DD","scope":"next_week|current_week"}],"rationale":"string >= 10 chars"}. '
-                "Do not include markdown or extra keys."
-            )
-
             llm_messages = [
-                {"role": "system", "content": schema_instruction},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt.strip()},
             ]
             ai_text = self.llm_service.chat_completion(llm_messages)
 
             ai_msg = ChatbotSessionMessage(
-                chatbot_id=chat.chatbot_id,
+                chatbot_id=chat_id,
                 sender="assistant",
                 content=ai_text,
             )
@@ -272,6 +351,25 @@ class ChatbotSessionService(CRUDService):
         suggestion_payload["version_id"] = version_id
         self.training_plan_version_service.validate_ai_actions(suggestion_payload)
 
+        session_title: Optional[str] = None
+        if is_first_message:
+            try:
+                title_messages = [
+                    {
+                        "role": "system",
+                        "content": (
+                            "Summarize what this coaching conversation is about in one brief "
+                            "sentence (10 words max). Reply with ONLY the sentence, no period at the end."
+                        ),
+                    },
+                    {"role": "user", "content": f'User asked their coach to adjust their training plan: "{user_prompt}"'},
+                ]
+                session_title = self.llm_service.chat_completion(title_messages, max_tokens=25)
+                if session_title:
+                    session_title = session_title.strip().rstrip(".")
+            except Exception:
+                session_title = None
+
         result: Dict[str, Any] = {
             "chatbot_id": str(chatbot_id),
             "version_id": str(version_id),
@@ -280,6 +378,7 @@ class ChatbotSessionService(CRUDService):
                 "rationale": suggestion_payload.get("rationale", ""),
             },
             "applied": False,
+            "session_title": session_title,
         }
 
         if apply_actions:

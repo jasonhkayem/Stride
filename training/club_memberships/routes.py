@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from flask import Blueprint, request
 from marshmallow import Schema, ValidationError, fields
@@ -53,16 +53,19 @@ def get_route(record_id: str):
 
 
 @club_memberships_bp.route("/<record_id>/approve", methods=["POST"])
+@require_auth
 def approve_route(record_id: str):
     return approve(record_id)
 
 
 @club_memberships_bp.route("/<record_id>/reject", methods=["POST"])
+@require_auth
 def reject_route(record_id: str):
     return reject(record_id)
 
 
 @club_memberships_bp.route("/<record_id>", methods=["PUT", "PATCH"])
+@require_auth
 def update_route(record_id: str):
     payload = request.get_json(silent=True) or {}
     try:
@@ -73,6 +76,7 @@ def update_route(record_id: str):
 
 
 @club_memberships_bp.route("/<record_id>", methods=["DELETE"])
+@require_auth
 def delete_route(record_id: str):
     return delete(record_id)
 

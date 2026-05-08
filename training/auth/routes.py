@@ -3,7 +3,7 @@
 from flask import Blueprint, request
 from marshmallow import Schema, ValidationError, fields
 
-from .controller import forgot_password, login, me, reset_password, signup
+from .controller import forgot_password, login, me, reset_password, signup, strava_start
 
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
@@ -55,6 +55,11 @@ def forgot_password_route():
 def reset_password_route():
     payload = request.get_json(silent=True) or {}
     return reset_password(payload)
+
+
+@auth_bp.route("/strava/start", methods=["GET"])
+def strava_start_route():
+    return strava_start()
 
 
 @auth_bp.route("/me/<user_id>", methods=["GET"])

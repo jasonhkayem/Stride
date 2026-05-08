@@ -354,9 +354,10 @@ class TrainingPlanVersionService(CRUDService):
             "You are an expert running coach. Generate a structured training plan. "
             "Return ONLY valid JSON — no markdown, no extra keys — with this exact shape: "
             '{"plan_overview": "string", "weeks": [{"week": 1, "phase": "string", '
-            '"sessions": [{"day": "Monday", "type": "easy_run|tempo|long_run|interval|rest|cross_train", '
+            '"sessions": [{"day": "Monday", "type": "easy_run|tempo|long_run|interval|rest|cross_train|race", '
             '"distance_km": 5.0, "duration_min": 30, "notes": "string"}]}]}. '
             "Only include days that have a session (skip rest days or mark them type=rest with distance_km=0). "
+            "The final week must include a race day session with type=race, day='Race Day', and the full race distance and estimated finish time as notes. "
             "For interval sessions, notes MUST follow this format exactly: "
             "'Xkm warmup, NxYm @ P/km, Xkm cooldown' — e.g. '1.5km warmup, 8x400m @ 4:10/km, 1.5km cooldown'. "
             "For all other session types, keep notes under 10 words."

@@ -44,7 +44,7 @@ def _create_plan_version(client, user) -> str:
         "user_id": user["user_id"],
         "template_id": template_id,
         "start_date": "2024-06-01",
-    })
+    }, headers=user["headers"])
     assert plan_resp.status_code == 201
     user_plan_id = plan_resp.get_json()["user_plan_id"]
 
@@ -53,7 +53,7 @@ def _create_plan_version(client, user) -> str:
             "user_plan_id": user_plan_id,
             "template_id": template_id,
             "goal_time": "50:00",
-        })
+        }, headers=user["headers"])
     assert gen.status_code == 201
     return gen.get_json()["version"]["version_id"]
 
@@ -135,7 +135,7 @@ def test_approve_suggestion_creates_new_version(client, user):
         "version_id": version_id,
         "proposed_actions": [{"action": "adjust_volume", "percentage": -10, "scope": "next_week"}],
         "rationale": "Athlete reported fatigue — reduce volume to aid recovery.",
-    })
+    }, headers=user["headers"])
     data = resp.get_json()
     assert resp.status_code == 201, data
     assert data["new_version"]["version_id"] != version_id
@@ -188,7 +188,7 @@ def test_list_messages_after_reply(client, user):
         )
     assert reply_resp.status_code == 200, reply_resp.get_json()
 
-    resp = client.get(f"/chatbot_sessions/{session_id}/messages")
+    resp = client.get(f"/chatbot_sessions/{session_id}/messages", headers=user["headers"])
     messages = resp.get_json()
     assert resp.status_code == 200
     assert isinstance(messages, list)
@@ -208,6 +208,6 @@ def test_list_messages_after_reply(client, user):
 
 def test_new_session_has_no_messages(client, user):
     session_id = _create_session(client, user)
-    resp = client.get(f"/chatbot_sessions/{session_id}/messages")
+    resp = client.get(f"/chatbot_sessions/{session_id}/messages", headers=user["headers"])
     assert resp.status_code == 200
     assert resp.get_json() == []

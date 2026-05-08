@@ -69,7 +69,13 @@ async function renderClubs() {
           ${
             state.clubs.length
               ? state.clubs.map((club) => renderClubCard(club)).join("")
-              : renderInfoCard("No clubs yet", "Create the first club for your training community.")
+              : `<div class="panel-card">
+                  <h3>No clubs yet</h3>
+                  <p class="text-muted">Create the first club for your training community.</p>
+                  <div style="margin-top:12px">
+                    <button class="btn btn-dark btn-sm" id="emptyCreateClubBtn">Create Club</button>
+                  </div>
+                </div>`
           }
         </div>
       </section>
@@ -81,7 +87,7 @@ async function renderClubs() {
 }
 
 async function renderClubEvents(clubId) {
-  await Promise.all([ensureUsersLoaded(), ensureClubsLoaded(), ensureEventsLoaded(), ensureClubMembershipsLoaded()]);
+  await Promise.all([ensureUsersLoaded(), ensureClubsLoaded(), ensureEventsLoaded(), ensureClubMembershipsLoaded(), ensureEventRegistrationsLoaded()]);
 
   const club = state.clubs.find((item) => item.club_id === clubId);
   if (!club) {
@@ -101,6 +107,9 @@ async function renderClubEvents(clubId) {
     .sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
 
   const canCreateEvent = isClubAdmin(clubId);
+  const membership = getClubMembership(clubId);
+  const isMember = membership?.status === "approved";
+  const isAdmin = isClubAdmin(clubId);
 
   app.innerHTML = renderLayout({
     active: "clubs",
@@ -123,20 +132,15 @@ async function renderClubEvents(clubId) {
             }
           </div>
         </div>
-        ${
-          canCreateEvent
-            ? ""
-            : `
-              <div class="mini-card mb-3">
-                <p class="mini-title">Club admin posting only</p>
-                <p class="mini-body">Members can view events here, while club admins are the ones who post them.</p>
-              </div>
-            `
-        }
         <div class="community-grid">
           ${
             sortedEvents.length
-              ? sortedEvents.map((event) => renderEventCard(event)).join("")
+              ? sortedEvents.map((event) => {
+                  const eventRegs = state.eventRegistrations.filter((r) => String(r.event_id) === String(event.event_id));
+                  const myRegistration = eventRegs.find((r) => String(r.user_id) === String(state.userId)) || null;
+                  const attendees = isAdmin ? eventRegs.map((r) => state.usersById[String(r.user_id)]).filter(Boolean) : [];
+                  return renderEventCard(event, { myRegistration, attendeeCount: eventRegs.length, isAdmin, isMember, attendees });
+                }).join("")
               : renderInfoCard("No events yet", "This club has not posted any events yet.")
           }
         </div>
@@ -152,17 +156,20 @@ function renderClubCard(club) {
   const creator = state.usersById[club.created_by];
   const membership = getClubMembership(club.club_id);
   const isAdmin = isClubAdmin(club.club_id);
-  const upcomingEvents = state.events.filter((event) => event.club_id === club.club_id).length;
   const membersCount = state.clubMemberships.filter(
     (item) => item.club_id === club.club_id && item.status === "approved"
   ).length;
-  const buttonLabel = membership
-    ? membership.status === "approved"
-      ? "Joined"
-      : membership.status === "pending"
-        ? "Pending"
-        : "Join Club"
-    : "Join Club";
+  let buttonsHtml;
+  if (isAdmin) {
+    buttonsHtml = `<button class="btn btn-sm btn-outline-secondary view-club-events-btn" data-club-id="${club.club_id}">View Events</button>`;
+  } else if (membership?.status === "approved") {
+    buttonsHtml = `<button class="btn btn-sm btn-outline-secondary view-club-events-btn" data-club-id="${club.club_id}">View Events</button>
+      <button class="btn btn-sm btn-dark club-join-btn" data-club-id="${club.club_id}">Joined</button>`;
+  } else if (membership?.status === "pending") {
+    buttonsHtml = `<button class="btn btn-sm btn-outline-secondary club-join-btn" data-club-id="${club.club_id}">Pending</button>`;
+  } else {
+    buttonsHtml = `<button class="btn btn-sm btn-outline-secondary club-join-btn" data-club-id="${club.club_id}">Join Club</button>`;
+  }
 
   return `
     <article class="community-card" data-club-id="${club.club_id}" data-club-name="${escapeHtml(club.name.toLowerCase())}">
@@ -171,25 +178,39 @@ function renderClubCard(club) {
           <h4>${escapeHtml(club.name)}</h4>
           <p class="text-muted">Created by ${escapeHtml(creator?.name || "member")}</p>
         </div>
-        <span class="tag">${membersCount} member${membersCount === 1 ? "" : "s"}</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+          <span class="tag tag-count">${membersCount} member${membersCount === 1 ? "" : "s"}</span>
+          ${isAdmin ? `<span class="tag tag-admin">Admin</span>` : ""}
+        </div>
       </div>
-      <p class="text-muted">${escapeHtml(club.description || "No club description yet.")}</p>
-      <p class="text-muted">${upcomingEvents} event${upcomingEvents === 1 ? "" : "s"} posted by club admins.</p>
+      ${club.description ? `<p class="text-muted">${escapeHtml(club.description)}</p>` : ""}
       <div class="community-actions">
-        <button class="btn btn-outline-secondary view-club-events-btn" data-club-id="${club.club_id}">View Events</button>
-        <button class="btn btn-outline-secondary view-user-btn" data-user-id="${club.created_by}">View Creator</button>
-        ${isAdmin
-          ? `<span class="tag" style="align-self:center;font-size:12px">Admin</span>`
-          : `<button class="btn ${membership?.status === "approved" ? "btn-dark" : "btn-outline-secondary"} club-join-btn">
-              ${buttonLabel}
-            </button>`}
+        ${buttonsHtml}
       </div>
     </article>
   `;
 }
 
-function renderEventCard(event) {
+function renderEventCard(event, { myRegistration = null, attendeeCount = 0, isAdmin = false, isMember = false, attendees = [] } = {}) {
   const club = state.clubs.find((item) => item.club_id === event.club_id);
+
+  const rsvpBtn = (isMember || isAdmin)
+    ? myRegistration
+      ? `<button class="btn btn-sm btn-dark rsvp-toggle-btn" data-event-id="${escapeHtml(String(event.event_id))}" data-registration-id="${escapeHtml(String(myRegistration.registration_id))}" data-going="true">✓ Going</button>`
+      : `<button class="btn btn-sm btn-outline-secondary rsvp-toggle-btn" data-event-id="${escapeHtml(String(event.event_id))}" data-going="false">Going</button>`
+    : "";
+
+  const countTag = (isMember || isAdmin)
+    ? `<span class="tag">${attendeeCount} going</span>`
+    : `<span class="tag">Club event</span>`;
+
+  const attendeeSection = isAdmin && attendees.length
+    ? `<div class="event-attendees">
+        <p class="event-attendees-label">Attendees</p>
+        ${attendees.map((u) => `<span class="attendee-chip">${escapeHtml(u?.name || "Athlete")}</span>`).join("")}
+      </div>`
+    : "";
+
   return `
     <article class="community-card" data-event-id="${event.event_id}">
       <div class="community-card-head">
@@ -197,10 +218,12 @@ function renderEventCard(event) {
           <h4>${escapeHtml(event.name)}</h4>
           <p class="text-muted">${escapeHtml(club?.name || "Community club")} - ${escapeHtml(formatShortDate(event.event_date))}</p>
         </div>
-        <span class="tag">Club event</span>
+        ${countTag}
       </div>
       <p class="text-muted">${escapeHtml(event.description || "No event description yet.")}</p>
+      ${attendeeSection}
       <div class="community-actions">
+        ${rsvpBtn}
         <button class="btn btn-outline-secondary view-club-btn" data-club-id="${event.club_id}">View club</button>
       </div>
     </article>
@@ -213,7 +236,7 @@ function renderLeaveClubModal() {
       <div class="modal-card" style="max-width:380px">
         <div class="modal-header">
           <h4 class="modal-title" style="font-size:18px">Leave club</h4>
-          <button class="modal-close" id="leaveClubClose">&times;</button>
+          <button class="modal-close" id="leaveClubClose" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
           <p id="leaveClubMessage" style="margin:0">Are you sure you want to leave this club?</p>
@@ -233,7 +256,7 @@ function renderCancelRequestModal() {
       <div class="modal-card" style="max-width:380px">
         <div class="modal-header">
           <h4 class="modal-title" style="font-size:18px">Cancel join request</h4>
-          <button class="modal-close" id="cancelRequestClose">&times;</button>
+          <button class="modal-close" id="cancelRequestClose" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
           <p id="cancelRequestMessage" style="margin:0">Are you sure you want to cancel your join request?</p>
@@ -253,7 +276,7 @@ function renderKickMemberModal() {
       <div class="modal-card" style="max-width:420px">
         <div class="modal-header">
           <h4 class="modal-title" style="font-size:18px">Remove member</h4>
-          <button class="modal-close" id="kickMemberClose">&times;</button>
+          <button class="modal-close" id="kickMemberClose" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
           <p style="margin:0 0 12px">Remove <strong id="kickMemberName"></strong> from this club? This action will be reported to platform admins.</p>
@@ -278,7 +301,7 @@ function renderClubModal() {
             <p class="modal-meta">Community</p>
             <h2 class="modal-title">Create club</h2>
           </div>
-          <button class="modal-close" id="clubModalClose">&times;</button>
+          <button class="modal-close" id="clubModalClose" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
           <div class="plan-form-grid">
@@ -311,7 +334,7 @@ function renderClubDetailModal() {
             <p class="modal-meta">Community</p>
             <h2 class="modal-title" id="clubDetailTitle"></h2>
           </div>
-          <button class="modal-close" id="clubDetailClose">&times;</button>
+          <button class="modal-close" id="clubDetailClose" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
           <div class="modal-stats" id="clubDetailStats"></div>
@@ -342,7 +365,7 @@ function renderEventModal() {
             <p class="modal-meta">Community</p>
             <h2 class="modal-title">Create event</h2>
           </div>
-          <button class="modal-close" id="eventModalClose">&times;</button>
+          <button class="modal-close" id="eventModalClose" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
           <div class="plan-form-grid">
@@ -398,6 +421,7 @@ function attachClubActions() {
   };
 
   openBtn?.addEventListener("click", () => modal?.classList.add("open"));
+  document.getElementById("emptyCreateClubBtn")?.addEventListener("click", () => modal?.classList.add("open"));
   closeBtn?.addEventListener("click", closeModal);
   cancelBtn?.addEventListener("click", closeModal);
   modal?.addEventListener("click", (event) => {
@@ -478,7 +502,7 @@ function attachClubActions() {
         await ensureClubMembershipsLoaded(true);
         await renderClubs();
       } catch (error) {
-        window.alert(`Club action failed: ${error.message}`);
+        showToast(`Club action failed: ${error.message}`, "error");
         button.disabled = false;
       }
     });
@@ -495,7 +519,7 @@ function attachClubActions() {
         await ensureClubMembershipsLoaded(true);
         await renderClubs();
       } catch (err) {
-        window.alert(`Approve failed: ${err.message}`);
+        showToast(`Approve failed: ${err.message}`, "error");
         btn.disabled = false;
       }
     });
@@ -512,7 +536,7 @@ function attachClubActions() {
         await ensureClubMembershipsLoaded(true);
         await renderClubs();
       } catch (err) {
-        window.alert(`Reject failed: ${err.message}`);
+        showToast(`Reject failed: ${err.message}`, "error");
         btn.disabled = false;
       }
     });
@@ -558,7 +582,7 @@ function attachClubActions() {
       await ensureClubMembershipsLoaded(true);
       await renderClubs();
     } catch (err) {
-      window.alert(`Failed to leave club: ${err.message}`);
+      showToast(`Failed to leave club: ${err.message}`, "error");
       if (btn) btn.disabled = false;
     }
   });
@@ -579,7 +603,7 @@ function attachClubActions() {
       await ensureClubMembershipsLoaded(true);
       await renderClubs();
     } catch (err) {
-      window.alert(`Failed to cancel request: ${err.message}`);
+      showToast(`Failed to cancel request: ${err.message}`, "error");
       if (btn) btn.disabled = false;
     }
   });
@@ -606,12 +630,61 @@ function attachClubActions() {
       await renderClubs();
       showToast("Member removed from club.");
     } catch (err) {
-      window.alert(`Failed to remove member: ${err.message}`);
+      showToast(`Failed to remove member: ${err.message}`, "error");
       if (btn) btn.disabled = false;
     }
   });
 
+  const deleteClubModal = document.getElementById("deleteClubModal");
+  document.getElementById("deleteClubClose")?.addEventListener("click", () => deleteClubModal?.classList.remove("open"));
+  document.getElementById("deleteClubCancelBtn")?.addEventListener("click", () => deleteClubModal?.classList.remove("open"));
+  deleteClubModal?.addEventListener("click", (e) => { if (e.target === deleteClubModal) deleteClubModal.classList.remove("open"); });
+  document.getElementById("deleteClubConfirmBtn")?.addEventListener("click", async () => {
+    const clubId = deleteClubModal?.dataset.clubId;
+    if (!clubId) return;
+    const confirmBtn = document.getElementById("deleteClubConfirmBtn");
+    if (confirmBtn) confirmBtn.disabled = true;
+    try {
+      await apiFetch(`/clubs/${clubId}`, { method: "DELETE" });
+      deleteClubModal?.classList.remove("open");
+      await Promise.all([ensureClubsLoaded(true), ensureClubMembershipsLoaded(true)]);
+      await renderClubs();
+      showToast("Club deleted.");
+    } catch (err) {
+      showToast(`Failed to delete club: ${err.message}`, "error");
+      if (confirmBtn) confirmBtn.disabled = false;
+    }
+  });
+
   attachUserLinkActions();
+}
+
+function renderDeleteClubModal() {
+  return `
+    <div class="modal-overlay" id="deleteClubModal">
+      <div class="modal-card" style="max-width:380px">
+        <div class="modal-header">
+          <h4 class="modal-title" style="font-size:18px">Delete club</h4>
+          <button class="modal-close" id="deleteClubClose" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p style="margin:0">Permanently delete <strong id="deleteClubName"></strong>? This cannot be undone — all members, events, and history will be removed.</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" id="deleteClubCancelBtn">Cancel</button>
+          <button class="btn btn-outline-danger" id="deleteClubConfirmBtn">Delete Club</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function openDeleteClubModal(clubId, clubName) {
+  const modal = document.getElementById("deleteClubModal");
+  if (!modal) return;
+  modal.dataset.clubId = clubId;
+  document.getElementById("deleteClubName").textContent = clubName;
+  modal.classList.add("open");
 }
 
 function openLeaveClubModal(clubId, membershipId, clubName) {
@@ -689,7 +762,7 @@ function openClubDetailModal(club) {
       <div class="follows-list-item" data-user-id="${user.user_id}" style="cursor:pointer">
         <div class="modal-user-avatar">${avatarHtml}</div>
         <span class="follows-user-name">${escapeHtml(user.name || user.username || "Athlete")}</span>
-        ${isMemberAdmin ? `<span class="tag" style="margin-left:auto;font-size:11px">Admin</span>` : ""}
+        ${isMemberAdmin ? `<span class="tag tag-admin" style="margin-left:auto">Admin</span>` : ""}
         ${showKick ? `<button class="btn btn-sm btn-outline-danger kick-member-btn" data-membership-id="${escapeHtml(String(m.membership_id))}" data-user-name="${escapeHtml(user.name || user.username || "Athlete")}" style="margin-left:${isMemberAdmin ? "4px" : "auto"}">Remove</button>` : ""}
       </div>
     `;
@@ -766,9 +839,12 @@ function openClubDetailModal(club) {
   const joinBtnClass = membership?.status === "approved" ? "btn-dark" : "btn-outline-secondary";
 
   document.getElementById("clubDetailFooter").innerHTML = `
-    <button class="btn btn-outline-secondary" id="clubDetailEventsBtn">View Events</button>
+    ${currentUserIsAdmin || membership?.status === "approved"
+      ? `<button class="btn btn-outline-secondary" id="clubDetailEventsBtn">View Events</button>`
+      : ""}
     ${currentUserIsAdmin
-      ? `<span class="tag" style="align-self:center">Admin</span>`
+      ? `<span class="tag tag-admin" style="align-self:center;margin-right:auto">Admin</span>
+         <button class="btn btn-outline-danger" id="clubDetailDeleteBtn">Delete Club</button>`
       : `<button class="btn ${joinBtnClass}" id="clubDetailJoinBtn">${joinLabel}</button>`}
   `;
 
@@ -777,6 +853,11 @@ function openClubDetailModal(club) {
   document.getElementById("clubDetailEventsBtn")?.addEventListener("click", () => {
     modal.classList.remove("open");
     window.location.hash = `#/clubs/${club.club_id}/events`;
+  });
+
+  document.getElementById("clubDetailDeleteBtn")?.addEventListener("click", () => {
+    modal.classList.remove("open");
+    openDeleteClubModal(club.club_id, club.name);
   });
 
   const joinBtn = document.getElementById("clubDetailJoinBtn");
@@ -802,7 +883,7 @@ function openClubDetailModal(club) {
       modal.classList.remove("open");
       await renderClubs();
     } catch (err) {
-      window.alert(`Failed: ${err.message}`);
+      showToast(`Could not join club: ${err.message}`, "error");
       joinBtn.disabled = false;
     }
   });
@@ -872,6 +953,33 @@ function attachEventActions(clubId) {
     } finally {
       submitBtn.disabled = false;
     }
+  });
+
+  document.querySelectorAll(".rsvp-toggle-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const eventId = btn.dataset.eventId;
+      const going = btn.dataset.going === "true";
+      const registrationId = btn.dataset.registrationId;
+      btn.disabled = true;
+      try {
+        if (going) {
+          await apiFetch(`/event_registrations/${registrationId}`, { method: "DELETE" });
+          state.eventRegistrations = state.eventRegistrations.filter(
+            (r) => String(r.registration_id) !== String(registrationId)
+          );
+        } else {
+          const reg = await apiFetch("/event_registrations", {
+            method: "POST",
+            body: JSON.stringify({ event_id: eventId, user_id: state.userId }),
+          });
+          if (reg?.registration_id) state.eventRegistrations.push(reg);
+        }
+        await renderClubEvents(clubId);
+      } catch (err) {
+        showToast(`Could not update RSVP: ${err.message}`, "error");
+        btn.disabled = false;
+      }
+    });
   });
 
   Array.from(document.querySelectorAll(".view-club-btn")).forEach((button) => {

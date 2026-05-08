@@ -3,6 +3,8 @@
 from flask import Blueprint, request
 from marshmallow import Schema, ValidationError, fields
 
+from training.auth.decorators import require_auth
+
 from .controller import apply_ai_actions, create, delete, get_by_id, list_all, update
 from .schemas import TrainingPlanActionSchema
 
@@ -23,6 +25,7 @@ apply_schema = ApplyAiActionsSchema()
 
 
 @training_plan_actions_bp.route("", methods=["POST"])
+@require_auth
 def create_route():
     payload = request.get_json(silent=True) or {}
     try:
@@ -43,6 +46,7 @@ def get_route(record_id: str):
 
 
 @training_plan_actions_bp.route("/apply_ai_actions", methods=["POST"])
+@require_auth
 def apply_ai_actions_route():
     payload = request.get_json(silent=True) or {}
     try:
@@ -53,6 +57,7 @@ def apply_ai_actions_route():
 
 
 @training_plan_actions_bp.route("/<record_id>", methods=["PUT", "PATCH"])
+@require_auth
 def update_route(record_id: str):
     payload = request.get_json(silent=True) or {}
     try:
@@ -63,5 +68,6 @@ def update_route(record_id: str):
 
 
 @training_plan_actions_bp.route("/<record_id>", methods=["DELETE"])
+@require_auth
 def delete_route(record_id: str):
     return delete(record_id)

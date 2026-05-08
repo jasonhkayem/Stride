@@ -1,7 +1,7 @@
 function renderLogo() {
   return `
     <div class="brand-row">
-      <img src="${API_BASE}/images/stride_logo.jpg" alt="Stride" class="brand-logo" />
+      <img src="svg/stride-wordmark.svg" alt="Stride" class="brand-logo" />
     </div>
   `;
 }
@@ -28,7 +28,7 @@ function renderLayout({ active, title, subtitle, content, actions = true }) {
           </nav>
         </div>
         <div class="nav-links">
-          <button class="btn btn-outline-secondary" id="logoutBtn">Log out</button>
+          <a class="nav-link" id="logoutBtn" href="#">Log out</a>
         </div>
       </aside>
 
@@ -59,7 +59,9 @@ function renderLayout({ active, title, subtitle, content, actions = true }) {
     ${renderLeaveClubModal()}
     ${renderCancelRequestModal()}
     ${renderKickMemberModal()}
+    ${renderDeleteClubModal()}
     ${renderEventModal()}
+    ${renderDeleteSessionModal()}
   `;
 }
 
@@ -128,7 +130,7 @@ function initLayoutActions() {
       if (!status?.connected) {
         await connectStravaFlow();
         syncStravaBtn.innerHTML = `${STRAVA_SVG}Sync Strava`;
-        window.alert("Strava connected successfully.");
+        showToast("Strava connected successfully.");
         return;
       }
 
@@ -138,7 +140,8 @@ function initLayoutActions() {
       });
       await ensureActivitiesLoaded(true);
       await ensureStravaStatusLoaded(true);
-      showToast(`Imported ${result.imported} new activit${result.imported === 1 ? "y" : "ies"}.`);
+      const imported = result.imported ?? 0;
+      showToast(imported === 0 ? "Already up to date." : `Imported ${imported} new activit${imported === 1 ? "y" : "ies"}.`);
     } catch (error) {
       showToast(`Strava sync failed: ${error.message}`, "error");
     } finally {
@@ -165,31 +168,61 @@ async function handleRoute() {
     return;
   }
 
+  if ((hash === "#/login" || hash === "#/signup") && state.userId) {
+    window.location.hash = "#/dashboard";
+    return;
+  }
+
   if (hash === "#/admin" && state.platformRole !== "super_admin") {
     window.location.hash = "#/dashboard";
     return;
   }
 
-  if (hash.startsWith("#/athlete/")) {
-    if (!state.userId) {
-      window.location.hash = "#/login";
-      return;
-    }
-    const userId = hash.replace("#/athlete/", "").trim();
-    await renderPublicProfile(userId);
-    return;
+  // Show a loading state to prevent blank-content flash during transitions
+  if (!app.querySelector(".app-layout")) {
+    app.innerHTML = `<div class="route-loading-full"><div class="route-spinner"></div></div>`;
+  } else {
+    app.classList.add("route-loading");
   }
 
-  if (hash.startsWith("#/clubs/") && hash.endsWith("/events")) {
-    if (!state.userId) {
-      window.location.hash = "#/login";
+  try {
+    if (hash.startsWith("#/athlete/")) {
+      if (!state.userId) {
+        window.location.hash = "#/login";
+        return;
+      }
+      const userId = hash.replace("#/athlete/", "").trim();
+      await renderPublicProfile(userId);
       return;
     }
-    const clubId = hash.replace("#/clubs/", "").replace("/events", "").trim();
-    await renderClubEvents(clubId);
-    return;
-  }
 
-  const route = routes[hash] || routes[""];
-  await route();
+    if (hash.startsWith("#/clubs/") && hash.endsWith("/events")) {
+      if (!state.userId) {
+        window.location.hash = "#/login";
+        return;
+      }
+      const clubId = hash.replace("#/clubs/", "").replace("/events", "").trim();
+      await renderClubEvents(clubId);
+      return;
+    }
+
+    const route = routes[hash];
+    if (!route) {
+      if (state.userId) {
+        app.innerHTML = renderLayout({
+          active: "",
+          title: "Page not found",
+          subtitle: "The page you're looking for doesn't exist.",
+          content: renderEmptyState("404 — Not found", "Use the sidebar to navigate."),
+        });
+        initLayoutActions();
+      } else {
+        window.location.hash = "#/login";
+      }
+      return;
+    }
+    await route();
+  } finally {
+    app.classList.remove("route-loading");
+  }
 }

@@ -40,8 +40,7 @@ function renderLogin() {
               <div class="divider"><span>or</span></div>
 
               <div class="oauth-buttons">
-                <button class="btn btn-outline-secondary w-100" id="googleSignIn" style="display:inline-flex;align-items:center;justify-content:center;">${GOOGLE_SVG}Continue with Google</button>
-                <button class="btn btn-outline-dark w-100" id="stravaConnect" style="display:inline-flex;align-items:center;justify-content:center;">${STRAVA_SVG}Connect with Strava</button>
+                <button class="btn btn-outline-dark w-100" id="stravaConnect" style="display:inline-flex;align-items:center;justify-content:center;">${STRAVA_SVG}Continue with Strava</button>
               </div>
 
               <div class="inline-error mt-3 d-none" id="loginError"></div>
@@ -52,7 +51,7 @@ function renderLogin() {
 
               <!-- Step 1: email request -->
               <div id="forgotStep1">
-                <p class="text-muted" style="font-size:14px;margin-bottom:16px;">Enter your account email and we'll generate a reset code.</p>
+                <p class="text-muted" style="font-size:14px;margin-bottom:16px;">Enter your account email and we'll send you a one-time reset code.</p>
                 <label class="form-label">Email</label>
                 <input type="email" class="form-control" id="forgotEmail" placeholder="you@example.com" />
                 <button class="btn btn-primary w-100 mt-3" id="forgotSendBtn">Send reset code</button>
@@ -61,11 +60,8 @@ function renderLogin() {
 
               <!-- Step 2: token + new password -->
               <div id="forgotStep2" class="d-none">
-                <div class="demo-notice">
-                  <strong>Demo mode</strong> — in a production app this code would arrive by email. Your one-time reset code is:
-                  <code id="demoTokenDisplay"></code>
-                </div>
-                <label class="form-label mt-3">Reset code</label>
+                <div class="inline-success mb-3">A reset code has been sent to your email. It expires in 1 hour.</div>
+                <label class="form-label">Reset code</label>
                 <input class="form-control" id="resetTokenInput" placeholder="Paste your reset code" />
                 <label class="form-label mt-3">New password</label>
                 <input type="password" class="form-control" id="resetNewPwd" placeholder="At least 8 characters" />
@@ -150,22 +146,22 @@ function renderLogin() {
       forgotError.classList.remove("d-none");
       return;
     }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      forgotError.textContent = "Please enter a valid email address.";
+      forgotError.classList.remove("d-none");
+      return;
+    }
     const btn = document.getElementById("forgotSendBtn");
     btn.disabled = true;
     btn.textContent = "Sending…";
     try {
-      const result = await apiFetch("/auth/forgot-password", {
+      await apiFetch("/auth/forgot-password", {
         method: "POST",
         body: JSON.stringify({ email }),
       });
       document.getElementById("forgotStep1").classList.add("d-none");
       document.getElementById("forgotStep2").classList.remove("d-none");
-      const tokenDisplay = document.getElementById("demoTokenDisplay");
-      const tokenInput = document.getElementById("resetTokenInput");
-      if (result.reset_token) {
-        tokenDisplay.textContent = result.reset_token;
-        tokenInput.value = result.reset_token;
-      }
       loginCardSubtitle.textContent = "Enter the reset code and choose a new password.";
     } catch (err) {
       forgotError.textContent = err.message;
@@ -228,26 +224,28 @@ function renderLogin() {
   // ── OAuth buttons ──
   document.getElementById("stravaConnect").addEventListener("click", async () => {
     loginError.classList.add("d-none");
-    const targetUserId = state.userId;
-    if (!targetUserId) {
-      loginError.textContent = "Pick a user first, then connect Strava.";
-      loginError.classList.remove("d-none");
-      return;
-    }
     try {
-      const result = await apiFetch(`/users/${targetUserId}/strava/oauth/start`);
-      if (result.authorize_url) {
-        window.open(result.authorize_url, "_blank", "noopener,noreferrer");
-      }
+      const result = await apiFetch("/auth/strava/start");
+      if (!result.authorize_url) throw new Error("Failed to start Strava authorization.");
+
+      window.addEventListener("message", function onStravaAuth(event) {
+        if (!event.data || event.data.type !== "strava_auth") return;
+        window.removeEventListener("message", onStravaAuth);
+        const { token, user } = event.data;
+        if (token && user) {
+          setAuth(user, token);
+          window.location.hash = "#/dashboard";
+        } else {
+          loginError.textContent = "Strava sign-in failed. Please try again.";
+          loginError.classList.remove("d-none");
+        }
+      });
+
+      window.open(result.authorize_url, "_blank", "width=700,height=800");
     } catch (error) {
       loginError.textContent = error.message;
       loginError.classList.remove("d-none");
     }
-  });
-
-  document.getElementById("googleSignIn").addEventListener("click", () => {
-    loginError.textContent = "Google sign-in is not wired yet.";
-    loginError.classList.remove("d-none");
   });
 }
 

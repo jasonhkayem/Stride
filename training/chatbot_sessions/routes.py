@@ -61,16 +61,19 @@ def create_route():
 
 
 @chatbot_sessions_bp.route("", methods=["GET"])
+@require_auth
 def list_route():
     return list_all()
 
 
 @chatbot_sessions_bp.route("/<record_id>", methods=["GET"])
+@require_auth
 def get_route(record_id: str):
     return get_by_id(record_id)
 
 
 @chatbot_sessions_bp.route("/<record_id>", methods=["PUT", "PATCH"])
+@require_auth
 def update_route(record_id: str):
     payload = request.get_json(silent=True) or {}
     try:
@@ -81,6 +84,7 @@ def update_route(record_id: str):
 
 
 @chatbot_sessions_bp.route("/<record_id>", methods=["DELETE"])
+@require_auth
 def delete_route(record_id: str):
     return delete(record_id)
 
@@ -97,6 +101,7 @@ def reply_route(record_id: str):
 
 
 @chatbot_sessions_bp.route("/<record_id>/messages", methods=["GET"])
+@require_auth
 def list_messages_route(record_id: str):
     limit_raw = request.args.get("limit", "50")
     try:

@@ -1,11 +1,10 @@
 const app = document.getElementById("app");
 
-const API_BASE = "http://127.0.0.1:5000";
+const API_BASE = "";
 const STORAGE_KEYS = {
   userId: "stride.userId",
   role: "stride.platformRole",
   token: "stride.token",
-  coachSessionId: "stride.coachSessionId",
 };
 
 const DEFAULT_COACH_PROMPT = "You are a helpful running coach assistant.";
@@ -28,7 +27,7 @@ const state = {
   stravaStatus: null,
   following: [],
   followingMap: {},
-  coachSessionId: localStorage.getItem("stride.coachSessionId") || null,
+  coachSessionId: null,
   coachSessions: [],
   coachMessages: [],
   trainingPlan: null,
@@ -36,10 +35,12 @@ const state = {
   adminUsers: null,
   activityLikes: [],
   activityComments: [],
+  eventRegistrations: [],
   personalRecords: {},
+  completedPlanSessions: [],
+  completedPlanSessionsMap: {},
+  completedPlanSessionsVersionId: null,
 };
-
-let _coachInitialized = false;
 
 const protectedRoutes = new Set([
   "#/dashboard",
@@ -66,13 +67,20 @@ async function apiFetch(path, options = {}) {
     ...(options.headers || {}),
   };
 
-  const response = await fetch(apiUrl(path), {
-    ...options,
-    headers,
-  });
+  let response;
+  try {
+    response = await fetch(apiUrl(path), { ...options, headers });
+  } catch (_networkErr) {
+    throw new Error("Cannot reach the server. Make sure the backend is running.");
+  }
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if (response.status === 401 && state.token) {
+      clearAuth();
+      window.location.hash = "#/login";
+      return;
+    }
     const errorText = formatApiError(data);
     throw new Error(errorText);
   }
@@ -116,11 +124,13 @@ function clearAuth() {
   state.coachSessionId = null;
   state.coachSessions = [];
   state.coachMessages = [];
-  localStorage.removeItem(STORAGE_KEYS.coachSessionId);
   state.trainingPlan = null;
   state.stravaStatus = null;
   state.adminOverview = null;
   state.adminUsers = null;
+  state.completedPlanSessions = [];
+  state.completedPlanSessionsMap = {};
+  state.completedPlanSessionsVersionId = null;
   localStorage.removeItem(STORAGE_KEYS.userId);
   localStorage.removeItem(STORAGE_KEYS.role);
   localStorage.removeItem(STORAGE_KEYS.token);
@@ -205,6 +215,13 @@ async function ensureActivityCommentsLoaded(force = false) {
   return state.activityComments;
 }
 
+async function ensureEventRegistrationsLoaded(force = false) {
+  if (!force && state.eventRegistrations.length) return state.eventRegistrations;
+  const regs = await apiFetch("/event_registrations");
+  state.eventRegistrations = Array.isArray(regs) ? regs : [];
+  return state.eventRegistrations;
+}
+
 async function ensureTrainingTemplatesLoaded(force = false) {
   if (!force && state.trainingTemplates.length) return state.trainingTemplates;
   const templates = await apiFetch("/training_plan_templates");
@@ -247,10 +264,25 @@ async function ensureTrainingPlanLoaded(force = false) {
   return plan;
 }
 
+async function ensureCompletedPlanSessionsLoaded(versionId, force = false) {
+  if (!state.userId || !versionId) return [];
+  if (!force && state.completedPlanSessionsVersionId === String(versionId)) {
+    return state.completedPlanSessions;
+  }
+  const sessions = await apiFetch(`/completed_plan_sessions?version_id=${versionId}`);
+  state.completedPlanSessions = Array.isArray(sessions) ? sessions : [];
+  state.completedPlanSessionsVersionId = String(versionId);
+  state.completedPlanSessionsMap = Object.fromEntries(
+    state.completedPlanSessions.map((s) => [
+      `${s.version_id}_${s.week_index}_${s.session_index}`,
+      s,
+    ])
+  );
+  return state.completedPlanSessions;
+}
+
 async function ensureCoachLoaded(force = false) {
   if (!state.userId) return null;
-
-  const freshPageLoad = !_coachInitialized && !force;
 
   // Reload session list if empty or forced
   if (!state.coachSessions.length || force) {
@@ -260,39 +292,16 @@ async function ensureCoachLoaded(force = false) {
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
 
-  _coachInitialized = true;
-
-  // On fresh page load, clear any stale session so a new one is created
-  if (freshPageLoad && state.coachSessionId) {
-    state.coachSessionId = null;
-    localStorage.removeItem(STORAGE_KEYS.coachSessionId);
-    state.coachMessages = [];
-  }
-
   // If active session ID is set but not in the list (e.g. stale localStorage), clear it
   if (
     state.coachSessionId &&
     !state.coachSessions.some((s) => s.chatbot_id === state.coachSessionId)
   ) {
     state.coachSessionId = null;
-    localStorage.removeItem(STORAGE_KEYS.coachSessionId);
-  }
-
-  // No active session → create a fresh one
-  if (!state.coachSessionId) {
-    const created = await apiFetch("/chatbot_sessions", {
-      method: "POST",
-      body: JSON.stringify({ user_id: state.userId, session_type: "coach" }),
-    });
-    state.coachSessionId = created.chatbot_id;
-    localStorage.setItem(STORAGE_KEYS.coachSessionId, state.coachSessionId);
-    state.coachSessions.unshift(created);
-    state.coachMessages = [];
-    return state.coachMessages;
   }
 
   // Load messages for active session if not cached
-  if (!state.coachMessages.length || force) {
+  if (state.coachSessionId && (!state.coachMessages.length || force)) {
     const messages = await apiFetch(`/chatbot_sessions/${state.coachSessionId}/messages?limit=50`);
     state.coachMessages = Array.isArray(messages) ? messages : [];
   }

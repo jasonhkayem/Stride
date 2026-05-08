@@ -1,8 +1,9 @@
 # Python cache
 __pycache__/
 *.py[cod]
+*.pyo
 
-# Virtualenvs (if you create one later)
+# Virtualenvs
 .venv/
 venv/
 env/
@@ -14,16 +15,38 @@ ENV/
 .coverage
 htmlcov/
 
-# Environment secrets
+# Environment secrets — never commit real credentials
 .env
 .env.*
 
-# Node dependencies (present in repo)
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Node dependencies
 node_modules/
 
-# Editor settings (present in repo)
+# Editor settings
 .vscode/
+.idea/
 
 # OS files
 .DS_Store
 Thumbs.db
+ehthumbs.db
+
+# Office temporary files
+~$*
+*.tmp
+
+# Claude Code tool files
+.claude/
+
+# Build / distribution
+dist/
+build/
+*.egg-info/
+
+# User-uploaded content (not for version control)
+images/avatars/

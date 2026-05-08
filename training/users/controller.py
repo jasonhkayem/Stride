@@ -7,7 +7,7 @@ from typing import Any, Dict
 from flask import g, jsonify, request
 
 from training.common.crud_service import NotFoundError
-from training.services.strava_oauth_service import StravaOAuthError
+from training.services.strava_oauth_service import StravaOAuthError, StravaOAuthService
 
 from .schemas import UserSchema
 from .service import UserService
@@ -146,10 +146,20 @@ def strava_connect(record_id: str, payload: Dict[str, Any]):
 
 
 def strava_connect_callback(payload: Dict[str, Any]):
+    state_str = payload.get("state", "")
+    try:
+        state_info = StravaOAuthService().validate_state(state_str)
+    except StravaOAuthError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    if state_info.get("type") == "auth":
+        from training.auth.controller import strava_callback as auth_strava_callback
+        return auth_strava_callback(payload)
+
     try:
         result = service.connect_strava_oauth_from_state(
             code=payload.get("code"),
-            state=payload.get("state"),
+            state=state_str,
         )
         return jsonify(result), 200
     except StravaOAuthError as exc:

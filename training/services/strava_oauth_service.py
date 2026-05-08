@@ -39,17 +39,25 @@ class StravaOAuthService:
         if missing:
             raise StravaOAuthError("Missing required env vars: " + ", ".join(missing))
 
-    def _build_signed_state(self, user_id: str, ttl_sec: int = 600) -> str:
-        payload = {
-            "user_id": str(user_id),
+    def _build_signed_state(
+        self,
+        user_id: str | None = None,
+        state_type: str = "link",
+        ttl_sec: int = 600,
+    ) -> str:
+        payload: dict = {
+            "type": state_type,
             "exp": int(time.time()) + ttl_sec,
         }
+        if user_id is not None:
+            payload["user_id"] = str(user_id)
         payload_json = json.dumps(payload, separators=(",", ":")).encode("utf-8")
         payload_b64 = base64.urlsafe_b64encode(payload_json).decode("utf-8").rstrip("=")
         signature = hmac.new(self.state_secret, payload_b64.encode("utf-8"), hashlib.sha256).hexdigest()
         return f"{payload_b64}.{signature}"
 
-    def validate_state(self, state: str) -> str:
+    def validate_state(self, state: str) -> dict:
+        """Return ``{"type": str, "user_id": str | None}``."""
         if not state or "." not in state:
             raise StravaOAuthError("Invalid OAuth state")
 
@@ -69,14 +77,15 @@ class StravaOAuthService:
         if int(payload.get("exp", 0)) < int(time.time()):
             raise StravaOAuthError("OAuth state expired")
 
+        state_type = payload.get("type", "link")
         user_id = payload.get("user_id")
-        if not user_id:
+        if state_type == "link" and not user_id:
             raise StravaOAuthError("OAuth state missing user id")
-        return str(user_id)
+        return {"type": state_type, "user_id": user_id}
 
-    def build_authorize_url(self, user_id: str) -> str:
+    def build_authorize_url(self, user_id: str | None = None, state_type: str = "link") -> str:
         self._require_config()
-        state = self._build_signed_state(user_id=user_id)
+        state = self._build_signed_state(user_id=user_id, state_type=state_type)
         query = parse.urlencode(
             {
                 "client_id": self.client_id,

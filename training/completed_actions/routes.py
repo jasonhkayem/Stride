@@ -3,6 +3,8 @@ from __future__ import annotations
 from flask import Blueprint, request
 from marshmallow import Schema, ValidationError, fields
 
+from training.auth.decorators import require_auth
+
 from .controller import create, create_from_strava, delete, get_by_id, list_all, update
 from .schemas import CompletedActionSchema
 
@@ -24,6 +26,7 @@ strava_create_schema = StravaCreateSchema()
 
 
 @completed_actions_bp.route("", methods=["POST"])
+@require_auth
 def create_route():
     payload = request.get_json(silent=True) or {}
 
@@ -43,6 +46,7 @@ def create_route():
 
 
 @completed_actions_bp.route("/strava", methods=["POST"])
+@require_auth
 def create_from_strava_route():
     payload = request.get_json(silent=True) or {}
 
@@ -73,6 +77,7 @@ def get_route(completed_action_id: str):
 
 
 @completed_actions_bp.route("/<completed_action_id>", methods=["PUT", "PATCH"])
+@require_auth
 def update_route(completed_action_id: str):
     payload = request.get_json(silent=True) or {}
     try:
@@ -83,5 +88,6 @@ def update_route(completed_action_id: str):
 
 
 @completed_actions_bp.route("/<completed_action_id>", methods=["DELETE"])
+@require_auth
 def delete_route(completed_action_id: str):
     return delete(completed_action_id)

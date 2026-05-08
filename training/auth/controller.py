@@ -1,12 +1,14 @@
 ﻿from __future__ import annotations
 
+import json as _json
 import uuid
 from typing import Any, Dict
 
-from flask import jsonify
+from flask import jsonify, make_response
 from sqlalchemy import select
 
 from training.db import SessionLocal
+from training.services.strava_oauth_service import StravaOAuthError, StravaOAuthService
 from training.users.models import User
 from training.users.schemas import UserSchema
 
@@ -57,6 +59,41 @@ def reset_password(payload: Dict[str, Any]):
         service.reset_password(payload.get("token", ""), payload.get("new_password", ""))
         return jsonify({"message": "Password reset successfully. You can now sign in."}), 200
     except AuthError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"error": "internal_server_error", "detail": str(exc)}), 500
+
+
+def strava_start():
+    try:
+        url = StravaOAuthService().build_authorize_url(state_type="auth")
+        return jsonify({"authorize_url": url}), 200
+    except StravaOAuthError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"error": "internal_server_error", "detail": str(exc)}), 500
+
+
+def strava_callback(payload: Dict[str, Any]):
+    code = payload.get("code", "")
+    state = payload.get("state", "")
+    try:
+        user = service.strava_oauth_login(code=code, state=state)
+        token = generate_token(str(user.user_id), user.platform_role)
+        user_data = schema.dump(user)
+        user_json = _json.dumps(user_data)
+        token_json = _json.dumps(token)
+        html = (
+            "<!DOCTYPE html><html><head><title>Signing in…</title></head><body>"
+            "<p style='font-family:sans-serif;text-align:center;margin-top:60px'>"
+            "Signing in to Stride…</p>"
+            "<script>"
+            f"try{{window.opener.postMessage({{type:'strava_auth',token:{token_json},user:{user_json}}},'*');}}catch(e){{}}"
+            "setTimeout(function(){window.close();},400);"
+            "</script></body></html>"
+        )
+        return make_response(html, 200)
+    except (AuthError, StravaOAuthError) as exc:
         return jsonify({"error": str(exc)}), 400
     except Exception as exc:
         return jsonify({"error": "internal_server_error", "detail": str(exc)}), 500

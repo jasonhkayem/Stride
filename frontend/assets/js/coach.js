@@ -4,13 +4,13 @@ function getSessionTitle(chatbotId, createdAt) {
   return formatShortDate(createdAt);
 }
 
-function saveSessionTitle(chatbotId, firstUserMessage) {
-  const words = (firstUserMessage || "").trim().split(/\s+/).slice(0, 6).join(" ");
-  if (words) localStorage.setItem(`stride.sessionTitle.${chatbotId}`, words);
+function saveSessionTitle(chatbotId, title) {
+  const text = (title || "").trim();
+  if (text) localStorage.setItem(`stride.sessionTitle.${chatbotId}`, text);
 }
 
 async function renderCoach() {
-  await ensureCoachLoaded();
+  await Promise.all([ensureCoachLoaded(), ensureTrainingPlanLoaded()]);
   const messages = normalizeCoachMessages(state.coachMessages);
   const isExpanded = messages.length > 0;
   const messageHtml = messages.length
@@ -22,6 +22,21 @@ async function renderCoach() {
       </div>
     `;
 
+  const activeSession = state.coachSessions.find((s) => s.chatbot_id === state.coachSessionId);
+  const relatedActivityId = activeSession?.related_activity_id ?? null;
+  const relatedActivity = relatedActivityId
+    ? (state.activities || []).find((a) => String(a.activity_id) === String(relatedActivityId))
+    : null;
+  const activityBannerHtml = relatedActivityId
+    ? `<div style="padding:8px 12px;margin-bottom:8px;border-radius:10px;background:#f1f5f9;border:1px solid #e2e8f0;font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px">
+        <span>Activity context:</span>
+        <strong style="color:var(--text-primary)">${relatedActivity
+          ? `${escapeHtml(formatActivityType(relatedActivity.activity_type))} &middot; ${escapeHtml(formatShortDate(relatedActivity.timestamp))}${relatedActivity.distance ? ` &middot; ${escapeHtml(formatDistance(relatedActivity.distance))}` : ""}`
+          : "Linked activity"
+        }</strong>
+      </div>`
+    : "";
+
   const sessionListHtml = state.coachSessions
     .map(
       (s) => `
@@ -30,7 +45,7 @@ async function renderCoach() {
           <span class="coach-session-label">${escapeHtml(getSessionTitle(s.chatbot_id, s.created_at))}</span>
           <span class="coach-session-time">${escapeHtml(formatTimeAgo(s.created_at))}</span>
         </button>
-        <button class="coach-session-delete" data-session-id="${escapeHtml(s.chatbot_id)}" title="Delete session">&times;</button>
+        <button class="coach-session-delete" data-session-id="${escapeHtml(s.chatbot_id)}" title="Delete session" aria-label="Delete session">&times;</button>
       </div>
     `
     )
@@ -54,10 +69,13 @@ async function renderCoach() {
           <section class="section-block" style="margin-top:0">
             <div class="coach-center ${isExpanded ? "expanded" : ""}" id="coachCenter">
               <div class="panel-card coach-thread">
+                ${activityBannerHtml}
                 <div id="coachMessages" class="coach-message-list">${messageHtml}</div>
                 <div class="message-input">
                   <input type="text" class="form-control" id="coachInput" placeholder="Share how you feel..." />
-                  <button class="btn btn-outline-secondary" id="coachAdjustPlanBtn">Adjust plan</button>
+                  ${getCurrentPlanVersion()
+                    ? `<button class="btn btn-outline-secondary" id="coachAdjustPlanBtn">Adjust plan</button>`
+                    : `<a class="btn btn-outline-secondary coach-no-plan-link" href="#/training-plan" style="font-size:13px;white-space:nowrap">Create a plan</a>`}
                   <button class="btn btn-dark" id="coachSendBtn">Send</button>
                 </div>
                 <div class="inline-error d-none" id="coachError"></div>
@@ -95,6 +113,7 @@ async function renderCoach() {
 
   initLayoutActions();
   attachCoachInteractions();
+  scrollCoachToBottom();
 }
 
 function renderSuggestionItem(user) {
@@ -107,7 +126,7 @@ function renderSuggestionItem(user) {
       ${avatarHtml}
       <div>
         <p class="name">${escapeHtml(user.name)}</p>
-        <span>${escapeHtml(user.username)}</span>
+        ${user.username ? `<span>@${escapeHtml(user.username)}</span>` : ""}
       </div>
       <button class="btn btn-sm ${following ? "btn-dark" : "btn-outline-secondary"} follow-toggle-btn">
         ${following ? "Following" : "Follow"}
@@ -129,7 +148,7 @@ function renderCoachMessage(message) {
         if (parsed.rationale) content = parsed.rationale;
       } catch (_) {}
     }
-    contentHtml = `<div class="coach-md">${typeof marked !== "undefined" ? marked.parse(content) : escapeHtml(content)}</div>`;
+    contentHtml = `<div class="coach-md">${typeof marked !== "undefined" ? DOMPurify.sanitize(marked.parse(content)) : escapeHtml(content)}</div>`;
   } else {
     contentHtml = `<p>${escapeHtml(message.content)}</p>`;
   }
@@ -159,9 +178,9 @@ function createCoachMessageElement(message, initialContent = null) {
 }
 
 function scrollCoachToBottom() {
-  const thread = document.querySelector(".coach-thread");
-  if (thread) {
-    thread.scrollTop = thread.scrollHeight;
+  const mainContent = document.querySelector(".main-content");
+  if (mainContent) {
+    mainContent.scrollTop = mainContent.scrollHeight;
   }
 }
 
@@ -199,16 +218,42 @@ async function animateAssistantMessage(messagesEl, message) {
   // Replace plain text with markdown-rendered output
   if (typeof marked !== "undefined") {
     body.className = "coach-md";
-    body.innerHTML = marked.parse(text);
+    body.innerHTML = DOMPurify.sanitize(marked.parse(text));
   }
   scrollCoachToBottom();
+}
+
+function renderDeleteSessionModal() {
+  return `
+    <div class="modal-overlay" id="deleteSessionModal">
+      <div class="modal-card" style="max-width:380px">
+        <div class="modal-header">
+          <h4 class="modal-title" style="font-size:18px">Delete chat session</h4>
+          <button class="modal-close" id="deleteSessionClose" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p style="margin:0">Are you sure you want to delete this chat session? This cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" id="deleteSessionCancelBtn">Cancel</button>
+          <button class="btn btn-outline-danger" id="deleteSessionConfirmBtn">Delete session</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function openDeleteSessionModal(sessionId) {
+  const modal = document.getElementById("deleteSessionModal");
+  if (!modal) return;
+  modal.dataset.sessionId = sessionId;
+  modal.classList.add("open");
 }
 
 async function switchToCoachSession(sessionId) {
   if (sessionId === state.coachSessionId) return;
   state.coachSessionId = sessionId;
   state.coachMessages = [];
-  localStorage.setItem(STORAGE_KEYS.coachSessionId, sessionId);
   await renderCoach();
 }
 
@@ -218,24 +263,11 @@ function attachCoachInteractions() {
   const errorEl = document.getElementById("coachError");
   const messagesEl = document.getElementById("coachMessages");
 
-  // New chat button
+  // New chat button — defer session creation until first message
   document.getElementById("coachNewBtn")?.addEventListener("click", async () => {
-    const btn = document.getElementById("coachNewBtn");
-    if (btn) btn.disabled = true;
-    try {
-      const created = await apiFetch("/chatbot_sessions", {
-        method: "POST",
-        body: JSON.stringify({ user_id: state.userId, session_type: "coach" }),
-      });
-      state.coachSessionId = created.chatbot_id;
-      state.coachMessages = [];
-      state.coachSessions = [];
-      localStorage.setItem(STORAGE_KEYS.coachSessionId, created.chatbot_id);
-      await renderCoach();
-    } catch (err) {
-      window.alert("Could not start new chat: " + err.message);
-      if (btn) btn.disabled = false;
-    }
+    state.coachSessionId = null;
+    state.coachMessages = [];
+    await renderCoach();
   });
 
   // Session list switching
@@ -243,25 +275,35 @@ function attachCoachInteractions() {
     btn.addEventListener("click", () => switchToCoachSession(btn.dataset.sessionId));
   });
 
-  // Delete session buttons
+  // Delete session buttons — open styled modal
   document.querySelectorAll(".coach-session-delete").forEach((btn) => {
-    btn.addEventListener("click", async (e) => {
+    btn.addEventListener("click", (e) => {
       e.stopPropagation();
-      const sessionId = btn.dataset.sessionId;
-      if (!window.confirm("Delete this chat session?")) return;
-      try {
-        await apiFetch(`/chatbot_sessions/${sessionId}`, { method: "DELETE" });
-        state.coachSessions = state.coachSessions.filter((s) => s.chatbot_id !== sessionId);
-        if (state.coachSessionId === sessionId) {
-          state.coachSessionId = null;
-          localStorage.removeItem(STORAGE_KEYS.coachSessionId);
-          state.coachMessages = [];
-        }
-        await renderCoach();
-      } catch (err) {
-        showToast("Could not delete session: " + err.message, "error");
-      }
+      openDeleteSessionModal(btn.dataset.sessionId);
     });
+  });
+
+  // Delete session modal interactions
+  const deleteModal = document.getElementById("deleteSessionModal");
+  const closeDeleteModal = () => deleteModal?.classList.remove("open");
+  document.getElementById("deleteSessionClose")?.addEventListener("click", closeDeleteModal);
+  document.getElementById("deleteSessionCancelBtn")?.addEventListener("click", closeDeleteModal);
+  deleteModal?.addEventListener("click", (e) => { if (e.target === deleteModal) closeDeleteModal(); });
+  document.getElementById("deleteSessionConfirmBtn")?.addEventListener("click", async () => {
+    const sessionId = deleteModal?.dataset.sessionId;
+    if (!sessionId) return;
+    closeDeleteModal();
+    try {
+      await apiFetch(`/chatbot_sessions/${sessionId}`, { method: "DELETE" });
+      state.coachSessions = state.coachSessions.filter((s) => s.chatbot_id !== sessionId);
+      if (state.coachSessionId === sessionId) {
+        state.coachSessionId = null;
+        state.coachMessages = [];
+      }
+      await renderCoach();
+    } catch (err) {
+      showToast(`Could not delete session: ${err.message}`, "error");
+    }
   });
 
   async function sendMessage() {
@@ -270,6 +312,23 @@ function attachCoachInteractions() {
     errorEl.classList.add("d-none");
     sendBtn.disabled = true;
     expandCoachUI();
+
+    // Lazily create the session on first send
+    if (!state.coachSessionId) {
+      try {
+        const created = await apiFetch("/chatbot_sessions", {
+          method: "POST",
+          body: JSON.stringify({ user_id: state.userId, session_type: "coach" }),
+        });
+        state.coachSessionId = created.chatbot_id;
+        state.coachSessions.unshift(created);
+      } catch (err) {
+        sendBtn.disabled = false;
+        errorEl.textContent = "Could not start session: " + err.message;
+        errorEl.classList.remove("d-none");
+        return;
+      }
+    }
 
     const isFirstMessage = state.coachMessages.length === 0;
 
@@ -296,7 +355,7 @@ function attachCoachInteractions() {
       });
       typingIndicator.remove();
 
-      if (isFirstMessage) saveSessionTitle(state.coachSessionId, message);
+      if (isFirstMessage) saveSessionTitle(state.coachSessionId, reply.session_title || message);
 
       const assistantMessage = {
         sender: "assistant",
@@ -333,6 +392,7 @@ function attachCoachInteractions() {
 
   document.getElementById("coachAdjustPlanBtn")?.addEventListener("click", async () => {
     const userPromptText = input.value.trim() || "Please suggest adjustments to my training plan based on my recent performance.";
+    if (!state.trainingPlan) await ensureTrainingPlanLoaded();
     const currentVersion = getCurrentPlanVersion();
     if (!currentVersion) {
       showToast("No active training plan found.", "error");
@@ -341,6 +401,22 @@ function attachCoachInteractions() {
 
     const adjustBtn = document.getElementById("coachAdjustPlanBtn");
     if (adjustBtn) adjustBtn.disabled = true;
+
+    if (!state.coachSessionId) {
+      try {
+        const created = await apiFetch("/chatbot_sessions", {
+          method: "POST",
+          body: JSON.stringify({ user_id: state.userId, session_type: "coach" }),
+        });
+        state.coachSessionId = created.chatbot_id;
+        state.coachSessions.unshift(created);
+      } catch (err) {
+        if (adjustBtn) adjustBtn.disabled = false;
+        showToast(`Could not start session: ${err.message}`, "error");
+        return;
+      }
+    }
+
     expandCoachUI();
 
     const userMessage = {
@@ -367,7 +443,7 @@ function attachCoachInteractions() {
       });
       typingIndicator.remove();
 
-      if (isFirstMessage) saveSessionTitle(state.coachSessionId, userPromptText);
+      if (isFirstMessage) saveSessionTitle(state.coachSessionId, result.session_title || "Training plan adjustment");
 
       const suggestion = result.validated_suggestion;
       const suggestionEl = document.createElement("div");
@@ -393,7 +469,7 @@ function attachCoachInteractions() {
           const declineBtn = suggestionEl.querySelector(".decline-btn");
           if (declineBtn) declineBtn.disabled = true;
         } catch (err) {
-          showToast("Failed to apply changes: " + err.message, "error");
+          showToast(`Failed to apply changes: ${err.message}`, "error");
         }
       });
 

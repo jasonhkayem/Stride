@@ -3,6 +3,8 @@ from __future__ import annotations
 from flask import Blueprint, request
 from marshmallow import ValidationError
 
+from training.auth.decorators import require_auth
+
 from .controller import create, delete, get_by_id, list_all, update
 from .schemas import EventSchema
 
@@ -14,6 +16,7 @@ update_schema = EventSchema(partial=True)
 
 
 @events_bp.route("", methods=["POST"])
+@require_auth
 def create_route():
     payload = request.get_json(silent=True) or {}
     try:
@@ -34,6 +37,7 @@ def get_route(record_id: str):
 
 
 @events_bp.route("/<record_id>", methods=["PUT", "PATCH"])
+@require_auth
 def update_route(record_id: str):
     payload = request.get_json(silent=True) or {}
     try:
@@ -44,5 +48,6 @@ def update_route(record_id: str):
 
 
 @events_bp.route("/<record_id>", methods=["DELETE"])
+@require_auth
 def delete_route(record_id: str):
     return delete(record_id)

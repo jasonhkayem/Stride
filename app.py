@@ -42,7 +42,11 @@ def create_app() -> Flask:
     # _load_env_file) so DATABASE_URL is already set from .env.
     from training.db import engine
     from training.club_memberships.models import ClubKickLog
+    from training.auth.models import PasswordResetToken
+    from training.completed_plan_sessions.models import CompletedPlanSession
     ClubKickLog.__table__.create(engine, checkfirst=True)
+    PasswordResetToken.__table__.create(engine, checkfirst=True)
+    CompletedPlanSession.__table__.create(engine, checkfirst=True)
 
     @app.after_request
     def add_cors_headers(response):
@@ -51,7 +55,20 @@ def create_app() -> Flask:
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
         return response
 
+    frontend_dir = Path(__file__).resolve().parent / "frontend"
     images_dir = Path(__file__).resolve().parent / "images"
+
+    @app.get("/")
+    def serve_frontend():
+        return send_from_directory(frontend_dir, "index.html")
+
+    @app.route("/assets/<path:filename>")
+    def serve_frontend_assets(filename):
+        return send_from_directory(frontend_dir / "assets", filename)
+
+    @app.route("/svg/<path:filename>")
+    def serve_frontend_svg(filename):
+        return send_from_directory(frontend_dir / "svg", filename)
 
     @app.get("/images/<path:filename>")
     def serve_image(filename):
@@ -66,16 +83,6 @@ def create_app() -> Flask:
             }
         )
 
-    @app.get("/")
-    def index():
-        return jsonify(
-            {
-                "name": "Final Year Project API",
-                "status": "running",
-                "health": "/health",
-            }
-        )
-
     return app
 
 
@@ -85,5 +92,5 @@ app = create_app()
 if __name__ == "__main__":
     host = os.getenv("FLASK_RUN_HOST", "127.0.0.1")
     port = int(os.getenv("FLASK_RUN_PORT", "5000"))
-    debug = os.getenv("FLASK_DEBUG", "1").lower() in {"1", "true", "yes"}
+    debug = os.getenv("FLASK_DEBUG", "0").lower() in {"1", "true", "yes"}
     app.run(host=host, port=port, debug=debug)

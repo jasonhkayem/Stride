@@ -1,23 +1,49 @@
-function _completedKey(versionId) {
-  return `stride.completedSessions.${versionId}`;
+function _filterRunnableSessions(sessions) {
+  return (sessions || []).filter((s) => {
+    const type = (s.type || "").toLowerCase();
+    if (type === "rest") return false;
+    if (type === "race") return true;
+    return !!(s.distance_km || s.duration_min);
+  });
 }
 
-function getCompletedSessions(versionId) {
-  try {
-    return JSON.parse(localStorage.getItem(_completedKey(versionId)) || "{}");
-  } catch (_) {
-    return {};
-  }
+function getOverallProgress(snapshot, versionId) {
+  let total = 0;
+  let completed = 0;
+  (snapshot.weeks || []).forEach((week, weekIdx) => {
+    _filterRunnableSessions(week.sessions).forEach((_, sessionIdx) => {
+      total++;
+      if (isSessionCompleted(versionId, weekIdx, sessionIdx)) completed++;
+    });
+  });
+  return { total, completed };
 }
 
-function markSessionCompleted(versionId, weekIdx, sessionIdx) {
-  const completed = getCompletedSessions(versionId);
-  completed[`${weekIdx}_${sessionIdx}`] = true;
-  localStorage.setItem(_completedKey(versionId), JSON.stringify(completed));
+function getWeekProgress(snapshot, versionId, weekIdx) {
+  let total = 0;
+  let completed = 0;
+  _filterRunnableSessions((snapshot.weeks || [])[weekIdx]?.sessions).forEach((_, sessionIdx) => {
+    total++;
+    if (isSessionCompleted(versionId, weekIdx, sessionIdx)) completed++;
+  });
+  return { total, completed };
 }
 
 function isSessionCompleted(versionId, weekIdx, sessionIdx) {
-  return Boolean(getCompletedSessions(versionId)[`${weekIdx}_${sessionIdx}`]);
+  const key = `${versionId}_${weekIdx}_${sessionIdx}`;
+  return Boolean(state.completedPlanSessionsMap[key]);
+}
+
+async function markSessionCompleted(versionId, weekIdx, sessionIdx) {
+  const result = await apiFetch("/completed_plan_sessions", {
+    method: "POST",
+    body: JSON.stringify({ version_id: versionId, week_index: weekIdx, session_index: sessionIdx }),
+  });
+  const key = `${versionId}_${weekIdx}_${sessionIdx}`;
+  if (!state.completedPlanSessionsMap[key]) {
+    state.completedPlanSessions.push(result);
+    state.completedPlanSessionsMap[key] = result;
+  }
 }
 
 async function renderTrainingPlan() {
@@ -25,6 +51,7 @@ async function renderTrainingPlan() {
   await ensureTrainingTemplatesLoaded();
   await ensureCoachLoaded();
   const currentVersion = getCurrentPlanVersion();
+  if (currentVersion) await ensureCompletedPlanSessionsLoaded(currentVersion.version_id);
   const planHeader = `
     <section class="section-block">
       <div class="section-header">
@@ -33,6 +60,7 @@ async function renderTrainingPlan() {
           ? `<div class="d-flex gap-2">
                <button class="btn btn-outline-secondary btn-sm" id="newPlanBtn">New Plan</button>
                <button class="btn btn-dark" id="regenPlanBtn">Regenerate Plan</button>
+               <button class="btn btn-outline-danger btn-sm" id="abandonPlanBtn">Delete Plan</button>
              </div>`
           : `<button class="btn btn-dark" id="createPlanBtn">Create Plan</button>`}
       </div>
@@ -46,10 +74,14 @@ async function renderTrainingPlan() {
       subtitle: "Your personalized training plan.",
       content:
         planHeader +
-        renderEmptyState(
-        "No active plan",
-        "No training plan has been generated for this account yet. Use the button above to create one."
-      ) +
+        `<section class="section-block">
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:64px 24px;max-width:480px;margin:0 auto">
+            <div style="font-size:48px;margin-bottom:16px">📋</div>
+            <h3 style="margin-bottom:8px">No active training plan</h3>
+            <p class="text-muted" style="margin-bottom:24px">Let the AI coach build a personalised plan based on your goals and fitness level.</p>
+            <button class="btn btn-dark" id="createPlanCtaBtn">Create Training Plan</button>
+          </div>
+        </section>` +
         renderTrainingPlanModal(),
     });
     initLayoutActions();
@@ -64,6 +96,10 @@ async function renderTrainingPlan() {
   }
   const activeWeek = weeks[state.selectedPlanWeek] || {};
   const sessions = activeWeek.sessions || [];
+  const weekProgress = getWeekProgress(snapshot, currentVersion.version_id, state.selectedPlanWeek);
+  const overallProgress = getOverallProgress(snapshot, currentVersion.version_id);
+  const weekPct = weekProgress.total ? Math.round((weekProgress.completed / weekProgress.total) * 100) : 0;
+  const overallPct = overallProgress.total ? Math.round((overallProgress.completed / overallProgress.total) * 100) : 0;
   const actions = (state.trainingPlan.actions || []).filter(
     (action) => action.version_id === currentVersion.version_id
   );
@@ -84,16 +120,22 @@ async function renderTrainingPlan() {
             ${snapshot.plan_overview ? `<p class="text-muted small mt-1">${escapeHtml(snapshot.plan_overview)}</p>` : ""}
             ${weeks.length > 1 ? `
             <div class="week-nav">
-              <button class="btn btn-outline-secondary btn-sm" id="weekPrevBtn" ${state.selectedPlanWeek === 0 ? "disabled" : ""}>&#8592;</button>
+              <button class="btn btn-outline-secondary btn-sm" id="weekPrevBtn" aria-label="Previous week" ${state.selectedPlanWeek === 0 ? "disabled" : ""}>&#8592;</button>
               <span class="week-nav-label">Week ${(activeWeek.week || state.selectedPlanWeek + 1)}${activeWeek.phase ? ` — ${escapeHtml(activeWeek.phase)}` : ""}</span>
-              <button class="btn btn-outline-secondary btn-sm" id="weekNextBtn" ${state.selectedPlanWeek >= weeks.length - 1 ? "disabled" : ""}>&#8594;</button>
+              <button class="btn btn-outline-secondary btn-sm" id="weekNextBtn" aria-label="Next week" ${state.selectedPlanWeek >= weeks.length - 1 ? "disabled" : ""}>&#8594;</button>
+            </div>
+            ` : ""}
+            ${weekProgress.total > 0 ? `
+            <div style="margin: 8px 0 4px">
+              <div class="progress-track" style="margin: 0 0 4px">
+                <div class="progress-bar" style="width:${weekPct}%"></div>
+              </div>
+              <span style="font-size:12px;color:var(--text-muted)">${weekProgress.completed} / ${weekProgress.total} sessions completed this week</span>
             </div>
             ` : ""}
             <div class="plan-list">
               ${(() => {
-                const filtered = sessions.filter(
-                  (s) => !((s.type || "").toLowerCase() === "rest") && (s.distance_km || s.duration_min)
-                );
+                const filtered = _filterRunnableSessions(sessions);
                 return filtered.length
                   ? filtered
                       .map((session, index) =>
@@ -137,7 +179,19 @@ async function renderTrainingPlan() {
                 <span>Created by</span>
                 <strong>${escapeHtml(formatCreatedBy(currentVersion.created_by))}</strong>
               </div>
+              ${overallProgress.total > 0 ? `
+              <div class="stat-row">
+                <span>Overall progress</span>
+                <strong>${overallProgress.completed} / ${overallProgress.total} sessions</strong>
+              </div>
+              ` : ""}
             </div>
+            ${overallProgress.total > 0 ? `
+            <div class="progress-track">
+              <div class="progress-bar" style="width:${overallPct}%"></div>
+            </div>
+            <p style="font-size:12px;color:var(--text-muted);margin:-8px 0 8px">${overallPct}% complete</p>
+            ` : ""}
             ${currentVersion.change_summary && currentVersion.version_number > 1 ? `
             <div class="mini-card">
               <p class="mini-title">Change Summary</p>
@@ -177,6 +231,7 @@ async function renderTrainingPlan() {
       }
 
       ${renderVersionHistorySection(state.trainingPlan)}
+      ${renderAbandonPlanModal()}
       ${renderTrainingPlanModal()}
       ${renderPlanSessionModal()}
     `,
@@ -240,23 +295,40 @@ function formatCreatedBy(value) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function _describePlanAction(a) {
+  const scope = a.scope === "next_week" ? " next week" : a.scope === "current_week" ? " this week" : "";
+  switch (a.action) {
+    case "adjust_intensity": {
+      const pct = Number(a.intensity_adjustment) || 0;
+      const dir = pct >= 0 ? "Increase" : "Decrease";
+      return `**${dir} intensity by ${Math.abs(pct)}%**${scope}`;
+    }
+    case "adjust_volume": {
+      const pct = Number(a.percentage) || 0;
+      const dir = pct >= 0 ? "Increase" : "Decrease";
+      return `**${dir} training volume by ${Math.abs(pct)}%**${scope}`;
+    }
+    case "insert_rest_day":
+      return `**Insert a rest day**${scope}`;
+    case "reschedule_session":
+      return `**Reschedule session**${scope}`;
+    default:
+      return `**${a.action.replace(/_/g, " ")}**${scope}`;
+  }
+}
+
 function renderPlanSuggestion(suggestion) {
   const actions = suggestion.proposed_actions || [];
   const rationale = suggestion.rationale || "";
-  const actionRows = actions
-    .map((a) => {
-      const params = Object.entries(a)
-        .filter(([k]) => k !== "action")
-        .map(([k, v]) => `${escapeHtml(String(k))}: ${escapeHtml(String(v))}`)
-        .join(", ");
-      return `<li><strong>${escapeHtml(a.action)}</strong>${params ? ` — ${params}` : ""}</li>`;
-    })
-    .join("");
+  const actionLines = actions.map((a) => `- ${_describePlanAction(a)}`).join("\n");
+  const md = rationale + (actionLines ? "\n\n" + actionLines : "");
+  const contentHtml = typeof marked !== "undefined"
+    ? DOMPurify.sanitize(marked.parse(md))
+    : `<p>${escapeHtml(md)}</p>`;
   return `
     <div class="mini-card">
       <p class="mini-title">Coach suggestion</p>
-      <p class="text-muted small mb-2">${escapeHtml(rationale)}</p>
-      ${actionRows ? `<ul class="small mb-3">${actionRows}</ul>` : ""}
+      <div class="coach-md small mb-3">${contentHtml}</div>
       <div class="d-flex gap-2">
         <button class="btn btn-dark btn-sm approve-btn">Apply changes</button>
         <button class="btn btn-outline-secondary btn-sm decline-btn">Decline</button>
@@ -274,7 +346,7 @@ function renderPlanSessionModal() {
             <p class="modal-meta" id="planSessionModalDay"></p>
             <h2 class="modal-title" id="planSessionModalTitle"></h2>
           </div>
-          <button class="modal-close" id="planSessionModalClose">&times;</button>
+          <button class="modal-close" id="planSessionModalClose" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
           <p class="text-muted" id="planSessionModalDetail"></p>
@@ -291,17 +363,51 @@ function renderPlanSessionModal() {
 function renderVersionHistorySection(plan) {
   const versions = (plan?.versions || []).slice().sort((a, b) => b.version_number - a.version_number);
   if (versions.length < 2) return "";
-  const rows = versions.map((v) => `
+  const currentVersionId = String(plan?.current_version_id || "");
+  const rows = versions.map((v) => {
+    const isCurrent = String(v.version_id) === currentVersionId;
+    return `
     <div class="stat-row">
       <span>v${v.version_number} — ${escapeHtml(formatCreatedBy(v.created_by))}</span>
-      <strong>${escapeHtml(formatShortDate(v.created_at))}</strong>
+      <span style="display:flex;align-items:center;gap:8px">
+        <strong>${escapeHtml(formatShortDate(v.created_at))}</strong>
+        ${isCurrent
+          ? `<span style="font-size:11px;padding:2px 7px;border-radius:10px;background:#e9fbe9;color:#16a34a;font-weight:600">Current</span>`
+          : `<button class="btn btn-outline-secondary btn-sm restore-version-btn" style="padding:2px 10px;font-size:12px" data-version-id="${escapeHtml(String(v.version_id))}">Restore</button>`
+        }
+      </span>
     </div>
-  `).join("");
+  `;
+  }).join("");
   return `
     <section class="section-block">
       <div class="section-header"><h3>Version History</h3></div>
       <div class="panel-card"><div class="stat-list">${rows}</div></div>
     </section>
+  `;
+}
+
+function renderAbandonPlanModal() {
+  return `
+    <div class="modal-overlay" id="abandonPlanModal">
+      <div class="modal-card" style="max-width:420px">
+        <div class="modal-header">
+          <div>
+            <p class="modal-meta">Danger Zone</p>
+            <h2 class="modal-title">Delete Training Plan</h2>
+          </div>
+          <button class="modal-close" id="abandonPlanClose" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>This will permanently delete your current training plan and all version history. This action cannot be undone.</p>
+          <div class="inline-error d-none mt-3" id="abandonPlanError"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" id="abandonPlanCancel">Cancel</button>
+          <button class="btn btn-danger" id="abandonPlanConfirm">Delete Plan</button>
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -324,7 +430,7 @@ function renderTrainingPlanModal() {
             <p class="modal-meta">Plan Builder</p>
             <h2 class="modal-title">Create your training plan</h2>
           </div>
-          <button class="modal-close" id="trainingPlanClose">&times;</button>
+          <button class="modal-close" id="trainingPlanClose" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
           <div class="plan-form-grid">
@@ -371,6 +477,66 @@ async function attachTrainingPlanActions() {
       await renderTrainingPlan();
     }
   });
+
+  document.querySelectorAll(".restore-version-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const versionId = btn.dataset.versionId;
+      const userPlanId = state.trainingPlan?.user_plan_id;
+      if (!userPlanId || !versionId) return;
+      btn.disabled = true;
+      try {
+        await apiFetch(`/user_training_plans/${userPlanId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ current_version_id: versionId }),
+        });
+        await ensureTrainingPlanLoaded(true);
+        showToast("Plan version restored.");
+        await renderTrainingPlan();
+      } catch (err) {
+        showToast(`Could not restore version: ${err.message}`, "error");
+        btn.disabled = false;
+      }
+    });
+  });
+
+  const abandonBtn = document.getElementById("abandonPlanBtn");
+  const abandonModal = document.getElementById("abandonPlanModal");
+  const abandonClose = document.getElementById("abandonPlanClose");
+  const abandonCancel = document.getElementById("abandonPlanCancel");
+  const abandonConfirm = document.getElementById("abandonPlanConfirm");
+  const abandonError = document.getElementById("abandonPlanError");
+
+  if (abandonBtn && abandonModal) {
+    const openAbandon = () => {
+      if (abandonError) { abandonError.textContent = ""; abandonError.classList.add("d-none"); }
+      if (abandonConfirm) abandonConfirm.disabled = false;
+      abandonModal.classList.add("open");
+    };
+    const closeAbandon = () => abandonModal.classList.remove("open");
+    abandonBtn.addEventListener("click", openAbandon);
+    abandonClose?.addEventListener("click", closeAbandon);
+    abandonCancel?.addEventListener("click", closeAbandon);
+    abandonModal.addEventListener("click", (e) => { if (e.target === abandonModal) closeAbandon(); });
+    abandonConfirm?.addEventListener("click", async () => {
+      const userPlanId = state.trainingPlan?.user_plan_id;
+      if (!userPlanId) return;
+      abandonConfirm.disabled = true;
+      try {
+        await apiFetch(`/user_training_plans/${userPlanId}`, { method: "DELETE" });
+        state.trainingPlan = null;
+        closeAbandon();
+        await ensureTrainingPlanLoaded(true);
+        showToast("Training plan deleted.");
+        await renderTrainingPlan();
+      } catch (err) {
+        if (abandonError) {
+          abandonError.textContent = err.message;
+          abandonError.classList.remove("d-none");
+        }
+        abandonConfirm.disabled = false;
+      }
+    });
+  }
 
   const createPlanBtn = document.getElementById("createPlanBtn");
   const regenPlanBtn = document.getElementById("regenPlanBtn");
@@ -419,7 +585,7 @@ async function attachTrainingPlanActions() {
 
   const openModal = () => {
     if (!templates.length) {
-      window.alert("No training plan templates are available yet. Seed the templates first.");
+      showToast("No training plan templates are available yet. Seed the templates first.", "error");
       return;
     }
     errorEl?.classList.add("d-none");
@@ -428,7 +594,7 @@ async function attachTrainingPlanActions() {
   };
 
   const openInRegenMode = () => {
-    if (!templates.length) { window.alert("No templates available."); return; }
+    if (!templates.length) { showToast("No training plan templates available.", "error"); return; }
     isNewPlanMode = false;
     const snapshot = getCurrentPlanVersion()?.plan_snapshot || {};
     const matchingTemplate = templates.find((t) => t.goal_race === snapshot.goal_race);
@@ -445,7 +611,7 @@ async function attachTrainingPlanActions() {
   };
 
   const openInNewPlanMode = () => {
-    if (!templates.length) { window.alert("No templates available."); return; }
+    if (!templates.length) { showToast("No training plan templates available.", "error"); return; }
     isNewPlanMode = true;
     if (templateSelect) {
       templateSelect.disabled = false;
@@ -460,6 +626,7 @@ async function attachTrainingPlanActions() {
   };
 
   createPlanBtn?.addEventListener("click", openModal);
+  document.getElementById("createPlanCtaBtn")?.addEventListener("click", openModal);
   regenPlanBtn?.addEventListener("click", openInRegenMode);
   newPlanBtn?.addEventListener("click", openInNewPlanMode);
   closeBtn?.addEventListener("click", closeModal);
@@ -490,6 +657,8 @@ async function attachTrainingPlanActions() {
     }
 
     submitBtn.disabled = true;
+    const originalLabel = submitBtn.textContent;
+    submitBtn.textContent = "Generating…";
     try {
       let userPlanId = state.trainingPlan?.user_plan_id || null;
       if (!userPlanId) {
@@ -516,13 +685,15 @@ async function attachTrainingPlanActions() {
       });
 
       closeModal();
+      state.trainingPlan = null;
       await ensureTrainingPlanLoaded(true);
+      showToast("Training plan generated.");
       await renderTrainingPlan();
     } catch (error) {
       errorEl.textContent = error.message;
       errorEl.classList.remove("d-none");
-    } finally {
       submitBtn.disabled = false;
+      submitBtn.textContent = originalLabel;
     }
   });
 
@@ -536,9 +707,7 @@ async function attachTrainingPlanActions() {
       const sessionIdx = parseInt(item.dataset.planSession, 10);
       const versionId = item.dataset.planVersion;
       const version = getCurrentPlanVersion();
-      const filteredSessions = (version?.plan_snapshot?.weeks?.[weekIdx]?.sessions || []).filter(
-        (s) => !((s.type || "").toLowerCase() === "rest") && (s.distance_km || s.duration_min)
-      );
+      const filteredSessions = _filterRunnableSessions(version?.plan_snapshot?.weeks?.[weekIdx]?.sessions);
       const session = filteredSessions[sessionIdx];
       if (!session) return;
 
@@ -551,8 +720,15 @@ async function attachTrainingPlanActions() {
       const alreadyDone = isSessionCompleted(versionId, weekIdx, sessionIdx);
       completeBtn.textContent = alreadyDone ? "Completed ✓" : "Mark as completed";
       completeBtn.disabled = alreadyDone;
-      completeBtn.onclick = () => {
-        markSessionCompleted(versionId, weekIdx, sessionIdx);
+      completeBtn.onclick = async () => {
+        completeBtn.disabled = true;
+        try {
+          await markSessionCompleted(versionId, weekIdx, sessionIdx);
+        } catch (err) {
+          showToast(`Could not save progress: ${err.message}`, "error");
+          completeBtn.disabled = false;
+          return;
+        }
         sessionModal.classList.remove("open");
         renderTrainingPlan();
       };

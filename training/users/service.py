@@ -122,7 +122,8 @@ class UserService(CRUDService):
         if not state:
             raise ValueError("state is required")
 
-        state_user_id = self.strava_oauth_service.validate_state(state)
+        state_info = self.strava_oauth_service.validate_state(state)
+        state_user_id = state_info["user_id"]
         if str(state_user_id) != str(user_id):
             raise ValueError("OAuth state does not match user")
 
@@ -193,7 +194,8 @@ class UserService(CRUDService):
             }
 
     def connect_strava_oauth_from_state(self, code: str, state: str) -> Dict[str, Any]:
-        user_id = self.strava_oauth_service.validate_state(state)
+        state_info = self.strava_oauth_service.validate_state(state)
+        user_id = state_info["user_id"]
         return self.connect_strava_oauth(user_id=str(user_id), code=code, state=state)
 
     def disconnect_strava(self, user_id: str) -> Dict[str, Any]:

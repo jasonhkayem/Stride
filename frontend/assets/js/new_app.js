@@ -22,9 +22,51 @@ async function renderDashboard() {
     : "Next session pending";
 
   const recentActivities = myActivities.slice(0, 3);
-  const recentActivityCards = recentActivities.length
-    ? recentActivities.map((activity) => renderApiActivityCard(activity)).join("")
-    : renderInfoCard("No activities yet", "Sync Strava or add workouts later to see your dashboard stats.");
+  const isNewUser = myActivities.length === 0;
+
+  const onboardingSection = isNewUser ? `
+    <section class="section-block">
+      <div class="section-header">
+        <h3>Get started</h3>
+      </div>
+      <div class="onboarding-grid">
+        <div class="onboarding-card">
+          <div class="onboarding-icon">🏃</div>
+          <h4>Log your first activity</h4>
+          <p class="text-muted">Add a workout manually or connect Strava to import your runs, rides and swims.</p>
+          <button class="btn btn-dark onboarding-add-btn">Add activity</button>
+        </div>
+        <div class="onboarding-card">
+          <div class="onboarding-icon">⚡</div>
+          <h4>Connect Strava</h4>
+          <p class="text-muted">Sync your training history automatically and keep your stats up to date.</p>
+          <button class="btn btn-outline-secondary onboarding-strava-btn">${STRAVA_SVG}${state.stravaStatus?.connected ? "Sync Strava" : "Connect Strava"}</button>
+        </div>
+        <div class="onboarding-card">
+          <div class="onboarding-icon">📋</div>
+          <h4>Create a training plan</h4>
+          <p class="text-muted">Let the AI coach build a personalised plan based on your goals and fitness level.</p>
+          <a class="btn btn-outline-secondary" href="#/training-plan">View plans</a>
+        </div>
+      </div>
+    </section>
+  ` : `
+    <section class="section-block">
+      <div class="page-grid">
+        <div>
+          <div class="section-header">
+            <h3>Recent activity</h3>
+            <a href="#/activities">View all</a>
+          </div>
+          <div class="activity-feed">${recentActivities.map((activity) => renderApiActivityCard(activity)).join("")}</div>
+        </div>
+        <aside class="panel-card">
+          <h3 style="margin:0 0 16px">Weekly distance</h3>
+          <canvas id="weeklyDistanceChart" height="180"></canvas>
+        </aside>
+      </div>
+    </section>
+  `;
 
   app.innerHTML = renderLayout({
     active: "dashboard",
@@ -60,21 +102,7 @@ async function renderDashboard() {
         </div>` : ""}
       </section>
 
-      <section class="section-block">
-        <div class="page-grid">
-          <div>
-            <div class="section-header">
-              <h3>Recent activity</h3>
-              <a href="#/activities">View all</a>
-            </div>
-            <div class="activity-feed">${recentActivityCards}</div>
-          </div>
-          <aside class="panel-card">
-            <h3 style="margin:0 0 16px">Weekly distance</h3>
-            <canvas id="weeklyDistanceChart" height="180"></canvas>
-          </aside>
-        </div>
-      </section>
+      ${onboardingSection}
 
       ${renderActivityModal()}
     `,
@@ -82,8 +110,17 @@ async function renderDashboard() {
 
   initLayoutActions();
   attachActivityCardHandlers();
-  renderWeeklyDistanceChart(myActivities);
-  initActivityMaps();
+  if (!isNewUser) {
+    renderWeeklyDistanceChart(myActivities);
+    initActivityMaps();
+  }
+
+  document.querySelector(".onboarding-add-btn")?.addEventListener("click", () => {
+    document.getElementById("addActivityModal")?.classList.add("open");
+  });
+  document.querySelector(".onboarding-strava-btn")?.addEventListener("click", () => {
+    document.getElementById("syncStravaBtn")?.click();
+  });
 }
 
 async function renderAdmin() {
@@ -105,7 +142,7 @@ async function renderAdmin() {
   const userRows = state.adminUsers?.items || state.adminUsers?.results || [];
 
   let kickLogs = [];
-  try { kickLogs = await apiFetch("/admin/kick_logs"); } catch (_) {}
+  try { kickLogs = await apiFetch("/admin/kick_logs"); } catch (err) { showToast(`Could not load kick logs: ${err.message}`, "error"); }
 
   app.innerHTML = renderLayout({
     active: "admin",

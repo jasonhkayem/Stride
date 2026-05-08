@@ -58,7 +58,6 @@ training/
   club_memberships/             # Join/leave/approve/reject/kick membership; ClubKickLog audit model
   events/                       # Club events
   event_registrations/          # Event RSVP
-  messages/                     # Direct messages between users
   user_follows/                 # Follow/unfollow users
   chatbot_sessions/             # AI coach chat sessions (LLM-backed)
   chatbot_session_messages/     # Individual messages in a coach session
@@ -124,8 +123,12 @@ routes.py      Flask Blueprint with URL prefix
 
 - `POST /auth/login` → returns `{ token, user_id, role }`
 - Token stored in `localStorage` on the frontend (`stride.token`, `stride.userId`, `stride.platformRole`)
-- `@require_auth` decorator validates Bearer token and sets `g.current_user_id`
-- Only activity mutations and chatbot endpoints currently have `@require_auth` — most other routes are unprotected (known gap, documented as future work)
+- `@require_auth` decorator validates Bearer token and sets `g.current_user_id` / `g.current_role`
+- All write mutations (POST/PUT/PATCH/DELETE) require `@require_auth` across every module
+- GET routes for private data (chatbot sessions + messages) also require `@require_auth`
+- Public GET routes (activities, clubs, users, events, likes, comments, training plan templates) are intentionally unauthenticated — public read access is by design
+- Admin routes (`/admin/*`) require `@require_auth`; the service layer additionally verifies `platform_role == "super_admin"` via a DB lookup using `g.current_user_id`
+- Strava redirect callback (`GET/POST /users/strava/oauth/callback`) is intentionally unprotected — Strava redirects there directly without a JWT
 
 ---
 
@@ -156,7 +159,7 @@ Key render functions:
 - `renderActivityModal()` — HTML for the activity detail modal
 - `renderModalPaceChart(activityId, type)` — recent sessions bar chart (Chart.js)
 - `renderModalHrChart(activityId, type)` — heart rate trend bar chart (Chart.js)
-- `renderModalLapChart(laps)` — dual-axis lap breakdown: pace bars + HR line (Chart.js)
+- `renderModalLapChart(laps, activityType)` — two separate charts: bar chart for pace per lap (swim: min/100m, others: min/km) + line chart for HR per lap; renders into `#modalLapPaceCharts` and `#modalLapHrCharts`
 - `attachActivityCardHandlers()` — wires all activity card interactions
 - `attachClubActions()` — wires all club interactions including leave/cancel-request/kick modals
 - `openLeaveClubModal(clubId, membershipId, clubName)` — shows leave confirmation modal
@@ -164,10 +167,22 @@ Key render functions:
 - `openKickMemberModal(membershipId, userName)` — styled kick modal with reason textarea
 - `openClubDetailModal(club)` — shows club detail with members + leaderboard tabs; admin sees Remove buttons
 
+Module-level functions in `activities.js` (globally accessible):
+- `openActivityModal(activityId)` — populates and opens the full activity detail modal (stats, map, lap charts, pace/HR trends, comments, edit/delete actions)
+- `closeActivityModal()` — closes modal, destroys Leaflet map + Chart.js instances, resets state
+- `attachActivityModalInteractions()` — wires all modal interactions (close, backdrop, comment submit, delete flow, edit flow)
+- `currentActivityId` — module-level variable tracking the open modal's activity; shared between activities and profile pages
+
+Unified activity modal: both the activities page and profile page use the same `openActivityModal` / `attachActivityModalInteractions` from `activities.js`. `renderProfile` and `renderPublicProfile` both call `ensureActivityLikesLoaded()` and `ensureActivityCommentsLoaded()` upfront so the modal has complete data.
+
 Club admin role detection: `isClubAdmin(clubId)` checks `status === "approved" && role === "club_admin"`.
 Club admins see an "Admin" badge instead of join/leave/pending button everywhere (card + detail modal footer).
 
-Activity modal sections (in order): stats → map (Leaflet) → lap breakdown → recent sessions pace → heart rate trend → comments.
+Activity modal sections (in order): stats → map (Leaflet) → lap pace chart → lap HR chart → recent sessions pace → heart rate trend → comments.
+
+Empty states with inline CTAs: "No activities yet" shows an "Add Activity" button; "No clubs yet" shows a "Create Club" button; training plan with no active version shows a large centered CTA box with "Create Training Plan" button.
+
+All modal close buttons (`&times;`) and icon-only buttons (← / → week nav, session delete, delete comment, delete reply, remove lap) have `aria-label` attributes. All native `window.alert()` / `confirm()` calls have been replaced with `showToast()` / styled modals. Coach and training-plan markdown output is sanitized with DOMPurify before `innerHTML` injection. All `showToast` error calls use template literals consistently.
 
 ---
 
@@ -205,17 +220,12 @@ Tests live in `tests/`. Run after any backend change to confirm nothing is broke
 
 ## DB table creation note
 
-`app.py` explicitly creates the `ClubKickLog` table on startup using:
-```python
-ClubKickLog.__table__.create(engine, checkfirst=True)
-```
-This is done INSIDE `create_app()` after `_load_env_file()` so `DATABASE_URL` is resolved before the engine is imported. Do NOT move these imports to module top-level — it breaks the test suite (SQLite vs PostgreSQL divergence).
+`app.py` explicitly creates tables for `ClubKickLog`, `PasswordResetToken`, and `CompletedPlanSession` on startup using `__table__.create(engine, checkfirst=True)`. This is done INSIDE `create_app()` after `_load_env_file()` so `DATABASE_URL` is resolved before the engine is imported. Do NOT move these imports to module top-level — it breaks the test suite (SQLite vs PostgreSQL divergence).
 
 ---
 
 ## Known limitations / future work
 
-- Most routes lack `@require_auth` (activity + chatbot routes are protected; clubs, users, messages, events are not)
 - No rate limiting
 - JWT stored in `localStorage` (XSS risk; production would use HttpOnly cookies)
 - CORS wildcard (`Access-Control-Allow-Origin: *`)

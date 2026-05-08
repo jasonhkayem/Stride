@@ -3,6 +3,8 @@ from __future__ import annotations
 from flask import Blueprint, request
 from marshmallow import Schema, ValidationError, fields
 
+from training.auth.decorators import require_auth
+
 from .controller import bulk_create, create, delete, get_by_id, list_all, update
 from .schemas import CompletedActionLapSchema
 
@@ -22,6 +24,7 @@ bulk_laps_schema = BulkLapsSchema()
 
 
 @completed_action_laps_bp.route("", methods=["POST"])
+@require_auth
 def create_route():
     payload = request.get_json(silent=True) or {}
     try:
@@ -32,6 +35,7 @@ def create_route():
 
 
 @completed_action_laps_bp.route("/bulk", methods=["POST"])
+@require_auth
 def bulk_create_route():
     payload = request.get_json(silent=True) or {}
     try:
@@ -52,6 +56,7 @@ def get_route(lap_id: str):
 
 
 @completed_action_laps_bp.route("/<lap_id>", methods=["PUT", "PATCH"])
+@require_auth
 def update_route(lap_id: str):
     payload = request.get_json(silent=True) or {}
     try:
@@ -62,5 +67,6 @@ def update_route(lap_id: str):
 
 
 @completed_action_laps_bp.route("/<lap_id>", methods=["DELETE"])
+@require_auth
 def delete_route(lap_id: str):
     return delete(lap_id)

@@ -4,9 +4,12 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import os
 import time
 from typing import Any, Dict
+
+logger = logging.getLogger(__name__)
 
 
 _JWT_HEADER_B64 = (
@@ -22,8 +25,17 @@ class JWTError(Exception):
     """Raised when a JWT cannot be verified or decoded."""
 
 
+_INSECURE_DEFAULT = "dev-jwt-secret-change-in-production"
+
+
 def _secret() -> bytes:
-    return os.getenv("JWT_SECRET", "dev-jwt-secret-change-in-production").encode("utf-8")
+    value = os.getenv("JWT_SECRET", _INSECURE_DEFAULT)
+    if value == _INSECURE_DEFAULT:
+        logger.warning(
+            "JWT_SECRET is not set — using the insecure default. "
+            "Set JWT_SECRET in your environment before deploying."
+        )
+    return value.encode("utf-8")
 
 
 def _b64url_encode(data: bytes) -> str:

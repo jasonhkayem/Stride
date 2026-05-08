@@ -37,6 +37,7 @@ def get_route(record_id: str):
 
 
 @clubs_bp.route("/<record_id>", methods=["PUT", "PATCH"])
+@require_auth
 def update_route(record_id: str):
     payload = request.get_json(silent=True) or {}
     try:

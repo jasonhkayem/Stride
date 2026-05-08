@@ -3,6 +3,8 @@
 from flask import Blueprint, request
 from marshmallow import ValidationError
 
+from training.auth.decorators import require_auth
+
 from .controller import create, create_reply, delete, get_by_id, list_all, list_by_activity, list_replies, update
 from .schemas import ActivityCommentSchema
 
@@ -15,6 +17,7 @@ reply_schema = ActivityCommentSchema(exclude=("parent_comment_id",))
 
 
 @activity_comments_bp.route("", methods=["POST"])
+@require_auth
 def create_route():
     payload = request.get_json(silent=True) or {}
     try:
@@ -45,6 +48,7 @@ def list_replies_route(record_id: str):
 
 
 @activity_comments_bp.route("/<record_id>/replies", methods=["POST"])
+@require_auth
 def create_reply_route(record_id: str):
     payload = request.get_json(silent=True) or {}
     try:
@@ -55,6 +59,7 @@ def create_reply_route(record_id: str):
 
 
 @activity_comments_bp.route("/<record_id>", methods=["PUT", "PATCH"])
+@require_auth
 def update_route(record_id: str):
     payload = request.get_json(silent=True) or {}
     try:
@@ -65,5 +70,6 @@ def update_route(record_id: str):
 
 
 @activity_comments_bp.route("/<record_id>", methods=["DELETE"])
+@require_auth
 def delete_route(record_id: str):
     return delete(record_id)

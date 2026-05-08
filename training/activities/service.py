@@ -45,7 +45,7 @@ class ActivityService(CRUDService):
             "swim": "swim",
             # walking / hiking
             "walk": "walk",
-            "hike": "walk",
+            "hike": "hike",
             # strength / gym
             "weighttraining": "weights",
             "workout": "weights",

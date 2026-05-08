@@ -83,21 +83,25 @@ def update_route(record_id: str):
 
 
 @users_bp.route("/<record_id>", methods=["DELETE"])
+@require_auth
 def delete_route(record_id: str):
     return delete(record_id)
 
 
 @users_bp.route("/<record_id>/avatar", methods=["POST"])
+@require_auth
 def upload_avatar_route(record_id: str):
     return upload_avatar(record_id)
 
 
 @users_bp.route("/<record_id>/strava/oauth/start", methods=["GET"])
+@require_auth
 def strava_authorize_route(record_id: str):
     return strava_authorize(record_id)
 
 
 @users_bp.route("/<record_id>/strava/oauth/callback", methods=["POST"])
+@require_auth
 def strava_connect_route(record_id: str):
     payload = request.get_json(silent=True) or {}
     try:
@@ -125,10 +129,12 @@ def strava_generic_callback_route():
 
 
 @users_bp.route("/<record_id>/strava", methods=["GET"])
+@require_auth
 def strava_status_route(record_id: str):
     return strava_status(record_id)
 
 
 @users_bp.route("/<record_id>/strava", methods=["DELETE"])
+@require_auth
 def strava_disconnect_route(record_id: str):
     return strava_disconnect(record_id)

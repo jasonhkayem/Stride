@@ -94,26 +94,31 @@ function renderModalPaceChart(activityId, activityType) {
   });
 }
 
-function renderModalLapChart(laps) {
-  const section = document.getElementById("modalLapCharts");
-  const canvas = document.getElementById("modalLapChart");
-  if (!section || !canvas || typeof Chart === "undefined") return;
+function renderModalLapChart(laps, activityType) {
+  const paceSection = document.getElementById("modalLapPaceCharts");
+  const paceCanvas = document.getElementById("modalLapPaceChart");
+  const hrSection = document.getElementById("modalLapHrCharts");
+  const hrCanvas = document.getElementById("modalLapHrChart");
+  if (typeof Chart === "undefined") return;
 
-  if (canvas._chartInstance) { canvas._chartInstance.destroy(); canvas._chartInstance = null; }
+  if (paceCanvas?._chartInstance) { paceCanvas._chartInstance.destroy(); paceCanvas._chartInstance = null; }
+  if (hrCanvas?._chartInstance) { hrCanvas._chartInstance.destroy(); hrCanvas._chartInstance = null; }
 
-  if (!laps || !laps.length) { section.style.display = "none"; return; }
+  if (!laps || !laps.length) {
+    if (paceSection) paceSection.style.display = "none";
+    if (hrSection) hrSection.style.display = "none";
+    return;
+  }
 
   const validLaps = laps.filter((l) => l.distance_km > 0 && l.duration_sec > 0);
-  if (!validLaps.length) { section.style.display = "none"; return; }
+  if (!validLaps.length) {
+    if (paceSection) paceSection.style.display = "none";
+    if (hrSection) hrSection.style.display = "none";
+    return;
+  }
 
-  section.style.display = "block";
-
+  const isSwim = activityType === "swim";
   const labels = validLaps.map((l) => `Lap ${l.lap_index}`);
-  const paceData = validLaps.map((l) =>
-    parseFloat((l.duration_sec / 60 / l.distance_km).toFixed(3))
-  );
-  const hrData = validLaps.map((l) => (l.avg_hr != null ? Math.round(l.avg_hr) : null));
-  const hasHr = hrData.some((v) => v !== null);
 
   const formatPaceVal = (v) => {
     const m = Math.floor(v);
@@ -121,66 +126,72 @@ function renderModalLapChart(laps) {
     return `${m}:${s}`;
   };
 
-  const datasets = [
-    {
+  // Pace chart — swim uses min/100m, others use min/km
+  if (paceSection && paceCanvas) {
+    const paceData = validLaps.map((l) =>
+      isSwim
+        ? parseFloat((l.duration_sec / 60 / (l.distance_km * 10)).toFixed(3))
+        : parseFloat((l.duration_sec / 60 / l.distance_km).toFixed(3))
+    );
+    const paceUnit = isSwim ? "min/100m" : "min/km";
+    paceSection.style.display = "block";
+    paceCanvas._chartInstance = new Chart(paceCanvas, {
       type: "bar",
-      label: "Pace",
-      data: paceData,
-      backgroundColor: "#e5e7eb",
-      borderRadius: 4,
-      yAxisID: "yPace",
-    },
-  ];
-
-  const scales = {
-    x: { ticks: { font: { size: 10 } } },
-    yPace: {
-      type: "linear",
-      position: "left",
-      reverse: true,
-      ticks: { font: { size: 10 }, callback: formatPaceVal },
-      title: { display: true, text: "Pace (min/km)", font: { size: 10 } },
-    },
-  };
-
-  if (hasHr) {
-    datasets.push({
-      type: "line",
-      label: "Avg HR",
-      data: hrData,
-      borderColor: "#ef4444",
-      backgroundColor: "rgba(239,68,68,0.08)",
-      pointRadius: 4,
-      tension: 0.3,
-      yAxisID: "yHr",
-    });
-    scales.yHr = {
-      type: "linear",
-      position: "right",
-      grid: { drawOnChartArea: false },
-      ticks: { font: { size: 10 }, callback: (v) => `${v}` },
-      title: { display: true, text: "HR (bpm)", font: { size: 10 } },
-    };
-  }
-
-  canvas._chartInstance = new Chart(canvas, {
-    data: { labels, datasets },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: hasHr, labels: { font: { size: 10 }, boxWidth: 12 } },
-        tooltip: {
-          callbacks: {
-            label: (ctx) =>
-              ctx.dataset.label === "Avg HR"
-                ? `HR: ${ctx.parsed.y} bpm`
-                : `Pace: ${formatPaceVal(ctx.parsed.y)} /km`,
+      data: { labels, datasets: [{ data: paceData, backgroundColor: "#e5e7eb", borderRadius: 4 }] },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => `${formatPaceVal(ctx.parsed.y)} ${paceUnit}` } },
+        },
+        scales: {
+          y: {
+            reverse: true,
+            ticks: { font: { size: 10 }, callback: formatPaceVal },
+            title: { display: true, text: paceUnit, font: { size: 10 } },
           },
+          x: { ticks: { font: { size: 10 } } },
         },
       },
-      scales,
-    },
-  });
+    });
+  }
+
+  // HR line chart
+  const hrData = validLaps.map((l) => (l.avg_hr != null ? Math.round(l.avg_hr) : null));
+  const hasHr = hrData.some((v) => v !== null);
+  if (hasHr && hrSection && hrCanvas) {
+    hrSection.style.display = "block";
+    hrCanvas._chartInstance = new Chart(hrCanvas, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          data: hrData,
+          borderColor: "#ef4444",
+          backgroundColor: "rgba(239,68,68,0.08)",
+          pointRadius: 4,
+          tension: 0.3,
+          fill: true,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.y} bpm` } },
+        },
+        scales: {
+          y: {
+            ticks: { font: { size: 10 }, callback: (v) => `${v}` },
+            title: { display: true, text: "HR (bpm)", font: { size: 10 } },
+          },
+          x: { ticks: { font: { size: 10 } } },
+        },
+      },
+    });
+  } else if (hrSection) {
+    hrSection.style.display = "none";
+  }
 }
 
 function renderModalHrChart(activityId, activityType) {
@@ -238,7 +249,13 @@ async function renderActivities() {
 
   const feed = feedActivities.length
     ? feedActivities.map((activity) => renderApiActivityCard(activity)).join("")
-    : renderInfoCard("No activities yet", "Once activities are synced or created, your feed will show up here.");
+    : `<div class="panel-card">
+        <h3>No activities yet</h3>
+        <p class="text-muted">Once activities are synced or created, your feed will show up here.</p>
+        <div style="margin-top:12px">
+          <button class="btn btn-dark btn-sm" id="emptyAddActivityBtn">Add Activity</button>
+        </div>
+      </div>`;
 
   app.innerHTML = renderLayout({
     active: "activities",
@@ -290,6 +307,7 @@ async function renderActivities() {
 
       ${renderActivityModal()}
       ${renderLikersModal()}
+      ${renderDeleteActivityModal()}
     `,
   });
 
@@ -344,7 +362,7 @@ function renderApiActivityCard(activity) {
     chips,
     mapCapable,
     stats,
-    isOwnActivity ? activity.activity_id : null,
+    activity.activity_id,
     activity.route_polyline || null,
     isOwnActivity ? { type: activity.activity_type, timestamp: activity.timestamp, distance: activity.distance, durationMins: Math.round((activity.duration || 0) / 60) } : null,
     user,
@@ -374,7 +392,7 @@ function renderActivityCard(title, meta, type = "run", chips = [], hasMap = fals
         .join("")
     : "";
 
-  const reflectBtn = activityId
+  const reflectBtn = rawActivity && activityId
     ? `<button class="btn btn-sm btn-outline-secondary reflect-btn" data-activity-id="${escapeHtml(activityId)}">Reflect with coach</button>`
     : "";
 
@@ -440,16 +458,20 @@ function renderActivityModal() {
             <p class="modal-meta" id="modalMeta"></p>
             <h2 class="modal-title" id="modalTitle"></h2>
           </div>
-          <button class="modal-close" id="modalClose">&times;</button>
+          <button class="modal-close" id="modalClose" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
           <div class="modal-stats" id="modalStats"></div>
           <div class="modal-map" id="modalMap">
             <div id="modalLeafletMap"></div>
           </div>
-          <div class="modal-charts" id="modalLapCharts" style="display:none">
-            <p style="font-size:13px;font-weight:600;margin-bottom:8px">Lap breakdown</p>
-            <canvas id="modalLapChart" height="140"></canvas>
+          <div class="modal-charts" id="modalLapPaceCharts" style="display:none">
+            <p style="font-size:13px;font-weight:600;margin-bottom:8px">Lap pace</p>
+            <canvas id="modalLapPaceChart" height="120"></canvas>
+          </div>
+          <div class="modal-charts" id="modalLapHrCharts" style="display:none">
+            <p style="font-size:13px;font-weight:600;margin-bottom:8px">Lap heart rate</p>
+            <canvas id="modalLapHrChart" height="100"></canvas>
           </div>
           <div class="modal-charts" id="modalCharts">
             <p style="font-size:13px;font-weight:600;margin-bottom:8px">Recent sessions</p>
@@ -486,7 +508,7 @@ function renderLikersModal() {
       <div class="modal-card" style="max-width:360px">
         <div class="modal-header">
           <h4 class="modal-title" style="font-size:18px">Liked by</h4>
-          <button class="modal-close" id="likersModalClose">&times;</button>
+          <button class="modal-close" id="likersModalClose" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body" id="likersModalList"></div>
       </div>
@@ -516,7 +538,7 @@ function renderModalComments(activityId) {
           <div class="comment-header">
             <strong class="comment-author">${escapeHtml(replier?.name || "Athlete")}</strong>
             <span class="text-muted small"> · ${escapeHtml(formatTimeAgo(r.created_at))}</span>
-            ${isOwnReply ? `<button class="btn btn-sm delete-comment-btn" data-comment-id="${escapeHtml(String(r.comment_id))}" data-activity-id="${escapeHtml(activityId)}" title="Delete">&times;</button>` : ""}
+            ${isOwnReply ? `<button class="btn btn-sm delete-comment-btn" data-comment-id="${escapeHtml(String(r.comment_id))}" data-activity-id="${escapeHtml(activityId)}" title="Delete" aria-label="Delete reply">&times;</button>` : ""}
           </div>
           <p class="comment-body">${escapeHtml(r.content)}</p>
         </div>`;
@@ -527,7 +549,7 @@ function renderModalComments(activityId) {
         <div class="comment-header">
           <strong class="comment-author">${escapeHtml(commenter?.name || "Athlete")}</strong>
           <span class="text-muted small"> · ${escapeHtml(formatTimeAgo(c.created_at))}</span>
-          ${isOwn ? `<button class="btn btn-sm delete-comment-btn" data-comment-id="${escapeHtml(String(c.comment_id))}" data-activity-id="${escapeHtml(activityId)}" title="Delete">&times;</button>` : ""}
+          ${isOwn ? `<button class="btn btn-sm delete-comment-btn" data-comment-id="${escapeHtml(String(c.comment_id))}" data-activity-id="${escapeHtml(activityId)}" title="Delete" aria-label="Delete comment">&times;</button>` : ""}
         </div>
         <p class="comment-body">${escapeHtml(c.content)}</p>
         <div class="comment-actions">
@@ -552,7 +574,7 @@ function renderModalComments(activityId) {
         state.activityComments = state.activityComments.filter((c) => String(c.comment_id) !== commentId);
         renderModalComments(activityId);
       } catch (err) {
-        window.alert(`Could not delete comment: ${err.message}`);
+        showToast(`Could not delete comment: ${err.message}`, "error");
         btn.disabled = false;
       }
     });
@@ -585,7 +607,7 @@ function renderModalComments(activityId) {
         state.activityComments.push(reply);
         renderModalComments(actId);
       } catch (err) {
-        window.alert(`Reply failed: ${err.message}`);
+        showToast(`Reply failed: ${err.message}`, "error");
         btn.disabled = false;
       }
     };
@@ -605,7 +627,7 @@ function renderAddActivityModal() {
           <div>
             <p class="modal-meta">Manual Activity</p>
           </div>
-          <button class="modal-close" id="addActivityClose">&times;</button>
+          <button class="modal-close" id="addActivityClose" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
           <div class="plan-form-grid">
@@ -666,157 +688,280 @@ function renderAddActivityModal() {
   `;
 }
 
-function attachActivityCardHandlers() {
+function renderDeleteActivityModal() {
+  return `
+    <div class="modal-overlay" id="deleteActivityModal">
+      <div class="modal-card" style="max-width:380px">
+        <div class="modal-header">
+          <h4 class="modal-title" style="font-size:18px">Delete activity</h4>
+          <button class="modal-close" id="deleteActivityClose" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p style="margin:0">Permanently delete this activity? This cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" id="deleteActivityCancelBtn">Cancel</button>
+          <button class="btn btn-outline-danger" id="deleteActivityConfirmBtn">Delete</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+let currentActivityId = null;
+
+function closeActivityModal() {
   const modal = document.getElementById("activityModal");
-  const modalClose = document.getElementById("modalClose");
+  if (modal) modal.classList.remove("open");
+  currentActivityId = null;
+  const mapEl = document.getElementById("modalLeafletMap");
+  if (mapEl?._leafletMap) { mapEl._leafletMap.remove(); mapEl._leafletMap = null; }
+  const chartCanvas = document.getElementById("modalPaceChart");
+  if (chartCanvas?._chartInstance) { chartCanvas._chartInstance.destroy(); chartCanvas._chartInstance = null; }
+  const hrCanvas = document.getElementById("modalHrChart");
+  if (hrCanvas?._chartInstance) { hrCanvas._chartInstance.destroy(); hrCanvas._chartInstance = null; }
+  const lapPaceCanvas = document.getElementById("modalLapPaceChart");
+  if (lapPaceCanvas?._chartInstance) { lapPaceCanvas._chartInstance.destroy(); lapPaceCanvas._chartInstance = null; }
+  const lapHrCanvas = document.getElementById("modalLapHrChart");
+  if (lapHrCanvas?._chartInstance) { lapHrCanvas._chartInstance.destroy(); lapHrCanvas._chartInstance = null; }
+}
+
+function openActivityModal(activityId) {
+  const modal = document.getElementById("activityModal");
   if (!modal) return;
+  const activity = state.activities.find((a) => String(a.activity_id) === String(activityId));
+  if (!activity) return;
 
-  const cards = Array.from(app.querySelectorAll(".activity-card"));
-  const modalTitle = modal.querySelector(".modal-title");
-  const modalMeta = modal.querySelector(".modal-meta");
-  const modalStats = modal.querySelector("#modalStats");
-  const modalChips = modal.querySelector("#modalChips");
-  const modalMap = modal.querySelector("#modalMap");
-  const modalCharts = modal.querySelector("#modalCharts");
-  const modalActions = modal.querySelector("#modalActivityActions");
+  currentActivityId = activityId;
 
-  let currentActivityId = null;
+  const typeLabel = formatActivityType(activity.activity_type);
+  const hasDistance = DISTANCE_ACTIVITY_TYPES.has(activity.activity_type);
+  const isOwn = activity.user_id === state.userId;
 
-  const closeModal = () => {
-    modal.classList.remove("open");
-    currentActivityId = null;
-    const mapEl = document.getElementById("modalLeafletMap");
-    if (mapEl?._leafletMap) { mapEl._leafletMap.remove(); mapEl._leafletMap = null; }
-    const chartCanvas = document.getElementById("modalPaceChart");
-    if (chartCanvas?._chartInstance) { chartCanvas._chartInstance.destroy(); chartCanvas._chartInstance = null; }
-    const lapCanvas = document.getElementById("modalLapChart");
-    if (lapCanvas?._chartInstance) { lapCanvas._chartInstance.destroy(); lapCanvas._chartInstance = null; }
-    const hrCanvas = document.getElementById("modalHrChart");
-    if (hrCanvas?._chartInstance) { hrCanvas._chartInstance.destroy(); hrCanvas._chartInstance = null; }
-  };
+  modal.querySelector(".modal-title").textContent = `${formatTiming(activity.timestamp)} ${typeLabel}`;
+  modal.querySelector(".modal-meta").textContent = buildActivityMeta(activity);
 
-  function populateModal(card, forceActivityId = null) {
-    modalTitle.textContent = card.querySelector("h4")?.textContent || "Activity";
-    modalMeta.textContent = card.querySelector(".activity-meta")?.textContent || "";
-    modalStats.innerHTML = Array.from(card.querySelectorAll(".activity-stat"))
-      .map(
-        (stat) => `
-          <div class="modal-stat">
-            <span class="label">${escapeHtml(stat.querySelector(".label")?.textContent || "")}</span>
-            <span class="value">${escapeHtml(stat.querySelector(".value")?.textContent || "")}</span>
-          </div>
-        `
-      )
-      .join("");
-    modalChips.innerHTML = Array.from(card.querySelectorAll(".chip"))
-      .map((chip) => `<span class="chip">${escapeHtml(chip.textContent)}</span>`)
-      .join("");
-
-    const hasMap = card.dataset.hasMap === "true";
-    const polylineEncoded = card.querySelector("[data-polyline]")?.dataset.polyline || null;
-
-    // Real Leaflet map when polyline is available
-    if (hasMap && polylineEncoded && typeof L !== "undefined") {
-      modalMap.style.display = "flex";
-      const mapEl = document.getElementById("modalLeafletMap");
-      if (mapEl) {
-        if (mapEl._leafletMap) { mapEl._leafletMap.remove(); mapEl._leafletMap = null; }
-        requestAnimationFrame(() => {
-          try {
-            const coords = decodePolyline(polylineEncoded);
-            if (coords.length) {
-              const lmap = L.map(mapEl, { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false });
-              L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(lmap);
-              const pl = L.polyline(coords, { color: "#111827", weight: 3 }).addTo(lmap);
-              lmap.fitBounds(pl.getBounds(), { padding: [12, 12] });
-              mapEl._leafletMap = lmap;
-            }
-          } catch (_e) {}
-        });
-      }
-    } else {
-      modalMap.style.display = "none";
-    }
-
-    // Pace/distance trend chart for own activities
-    const activityType = card.dataset.type || "";
-    const activityId = forceActivityId || card.dataset.activityId || null;
-    if (activityId && activityType) {
-      renderModalPaceChart(activityId, activityType);
-      renderModalHrChart(activityId, activityType);
-    } else {
-      modalCharts.style.display = "none";
-      const hrSection = document.getElementById("modalHrCharts");
-      if (hrSection) hrSection.style.display = "none";
-    }
-
-    // Lap breakdown chart — look up full activity object (own or others')
-    const engagementActId = card.querySelector("[data-activity-id]")?.dataset.activityId || null;
-    const lookupId = forceActivityId || card.dataset.activityId || engagementActId;
-    const fullActivity = lookupId
-      ? state.activities.find((a) => String(a.activity_id) === String(lookupId))
-      : null;
-    const modalLapCharts = document.getElementById("modalLapCharts");
-    if (fullActivity?.laps?.length) {
-      renderModalLapChart(fullActivity.laps);
-    } else {
-      if (modalLapCharts) modalLapCharts.style.display = "none";
-      const lapCanvas = document.getElementById("modalLapChart");
-      if (lapCanvas?._chartInstance) { lapCanvas._chartInstance.destroy(); lapCanvas._chartInstance = null; }
-    }
-
-    // Populate user info for other people's activities
-    const cardUserId = card.dataset.userId;
-    const modalUserInfo = document.getElementById("modalUserInfo");
-    const modalUserAvatar = document.getElementById("modalUserAvatar");
-    const modalUserName = document.getElementById("modalUserName");
-    if (modalUserInfo) {
-      if (cardUserId && cardUserId !== state.userId) {
-        const cardUser = state.usersById[cardUserId];
-        modalUserAvatar.innerHTML = cardUser?.profile_picture_url
-          ? `<img src="${escapeHtml(API_BASE + cardUser.profile_picture_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
-          : "";
-        modalUserName.textContent = cardUser?.name || "Athlete";
-        modalUserName.dataset.userId = cardUserId;
-        modalUserInfo.classList.remove("d-none");
-      } else {
-        modalUserInfo.classList.add("d-none");
-      }
-    }
-
-    currentActivityId = forceActivityId || card.dataset.activityId || null;
-    if (modalActions) {
-      modalActions.classList.toggle("d-none", !card.dataset.activityId);
-      modalActions.dataset.rawType = card.dataset.rawType || "";
-      modalActions.dataset.rawTs = card.dataset.rawTs || "";
-      modalActions.dataset.rawDist = card.dataset.rawDist || "";
-      modalActions.dataset.rawDur = card.dataset.rawDur || "";
-    }
-
-    // Populate comments for the actual activity (own or others')
-    const commentActivityId = forceActivityId || card.dataset.activityId || null;
-    renderModalComments(commentActivityId);
-    const commentInput = document.getElementById("commentInput");
-    if (commentInput) commentInput.value = "";
+  const hrStat = activity.average_heart_rate
+    ? { label: "Avg HR", value: `${Math.round(activity.average_heart_rate)} bpm` }
+    : null;
+  const stats = hasDistance
+    ? [
+        { label: "Distance", value: formatDistance(activity.distance) },
+        { label: "Time", value: formatDuration(activity.duration) },
+        { label: "Pace", value: formatPace(activity) },
+        ...(hrStat ? [hrStat] : []),
+      ]
+    : [
+        { label: "Time", value: formatDuration(activity.duration) },
+        ...(hrStat ? [hrStat] : []),
+      ];
+  const modalStats = document.getElementById("modalStats");
+  if (modalStats) {
+    modalStats.innerHTML = stats.map((s) => `
+      <div class="modal-stat">
+        <span class="label">${escapeHtml(s.label)}</span>
+        <span class="value">${escapeHtml(s.value)}</span>
+      </div>`).join("");
   }
 
-  cards.forEach((card) => {
-    card.addEventListener("click", (event) => {
-      // Don't open modal when like/comment/likers buttons are clicked
-      if (event.target.closest(".like-btn, .likers-btn, .comment-toggle-btn, .reflect-btn")) return;
-      populateModal(card);
-      modal.classList.add("open");
-    });
-  });
+  const prLabels = isOwn ? (state.personalRecords?.[String(activity.activity_id)] || []) : [];
+  const chips = [typeLabel, ...prLabels.map((l) => `🏅 ${l}`)];
+  const modalChips = document.getElementById("modalChips");
+  if (modalChips) modalChips.innerHTML = chips.map((c) => `<span class="chip">${escapeHtml(c)}</span>`).join("");
 
-  modalClose?.addEventListener("click", closeModal);
-  modal.addEventListener("click", (event) => {
-    if (event.target === modal) closeModal();
-  });
+  const modalUserInfo = document.getElementById("modalUserInfo");
+  const modalUserAvatar = document.getElementById("modalUserAvatar");
+  const modalUserName = document.getElementById("modalUserName");
+  if (modalUserInfo) {
+    if (!isOwn) {
+      const user = state.usersById[activity.user_id];
+      if (modalUserAvatar) {
+        modalUserAvatar.innerHTML = user?.profile_picture_url
+          ? `<img src="${escapeHtml(API_BASE + user.profile_picture_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
+          : "";
+      }
+      if (modalUserName) {
+        modalUserName.textContent = user?.name || "Athlete";
+        modalUserName.dataset.userId = activity.user_id;
+      }
+      modalUserInfo.classList.remove("d-none");
+    } else {
+      if (modalUserName) modalUserName.dataset.userId = "";
+      modalUserInfo.classList.add("d-none");
+    }
+  }
+
+  const mapCapable = hasDistance && activity.activity_type !== "swim";
+  const modalMap = document.getElementById("modalMap");
+  if (mapCapable && activity.route_polyline && typeof L !== "undefined") {
+    if (modalMap) modalMap.style.display = "flex";
+    const mapEl = document.getElementById("modalLeafletMap");
+    if (mapEl) {
+      if (mapEl._leafletMap) { mapEl._leafletMap.remove(); mapEl._leafletMap = null; }
+      requestAnimationFrame(() => {
+        try {
+          const coords = decodePolyline(activity.route_polyline);
+          if (coords.length) {
+            const lmap = L.map(mapEl, { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false });
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(lmap);
+            const pl = L.polyline(coords, { color: "#111827", weight: 3 }).addTo(lmap);
+            lmap.fitBounds(pl.getBounds(), { padding: [12, 12] });
+            mapEl._leafletMap = lmap;
+          }
+        } catch (_e) {}
+      });
+    }
+  } else {
+    if (modalMap) modalMap.style.display = "none";
+  }
+
+  renderModalPaceChart(activityId, activity.activity_type);
+  renderModalHrChart(activityId, activity.activity_type);
+
+  if (activity.laps?.length) {
+    renderModalLapChart(activity.laps, activity.activity_type);
+  } else {
+    const lapPaceSection = document.getElementById("modalLapPaceCharts");
+    if (lapPaceSection) lapPaceSection.style.display = "none";
+    const lapHrSection = document.getElementById("modalLapHrCharts");
+    if (lapHrSection) lapHrSection.style.display = "none";
+    const lapPaceCanvas = document.getElementById("modalLapPaceChart");
+    if (lapPaceCanvas?._chartInstance) { lapPaceCanvas._chartInstance.destroy(); lapPaceCanvas._chartInstance = null; }
+    const lapHrCanvas = document.getElementById("modalLapHrChart");
+    if (lapHrCanvas?._chartInstance) { lapHrCanvas._chartInstance.destroy(); lapHrCanvas._chartInstance = null; }
+  }
+
+  const modalActions = document.getElementById("modalActivityActions");
+  if (modalActions) {
+    if (isOwn) {
+      modalActions.classList.remove("d-none");
+      modalActions.style.display = "flex";
+      modalActions.dataset.rawType = activity.activity_type || "";
+      modalActions.dataset.rawTs = activity.timestamp || "";
+      modalActions.dataset.rawDist = activity.distance || "";
+      modalActions.dataset.rawDur = Math.round((activity.duration || 0) / 60);
+    } else {
+      modalActions.classList.add("d-none");
+    }
+  }
+
+  renderModalComments(activityId);
+  const commentInput = document.getElementById("commentInput");
+  if (commentInput) commentInput.value = "";
+
+  modal.classList.add("open");
+}
+
+function attachActivityModalInteractions() {
+  const modal = document.getElementById("activityModal");
+  if (!modal) return;
+
+  document.getElementById("modalClose")?.addEventListener("click", closeActivityModal);
+  modal.addEventListener("click", (e) => { if (e.target === modal) closeActivityModal(); });
 
   document.getElementById("modalUserName")?.addEventListener("click", () => {
     const uid = document.getElementById("modalUserName")?.dataset.userId;
-    if (uid) { closeModal(); window.location.hash = `#/athlete/${uid}`; }
+    if (uid) { closeActivityModal(); window.location.hash = `#/athlete/${uid}`; }
+  });
+
+  const commentInput = document.getElementById("commentInput");
+  const commentSubmitBtn = document.getElementById("commentSubmitBtn");
+  async function submitComment() {
+    const content = commentInput?.value.trim();
+    if (!content || !currentActivityId) return;
+    if (commentSubmitBtn) commentSubmitBtn.disabled = true;
+    try {
+      const comment = await apiFetch("/activity_comments", {
+        method: "POST",
+        body: JSON.stringify({ activity_id: currentActivityId, user_id: state.userId, content }),
+      });
+      state.activityComments.push(comment);
+      if (commentInput) commentInput.value = "";
+      renderModalComments(currentActivityId);
+    } catch (err) {
+      showToast(`Comment failed: ${err.message}`, "error");
+    } finally {
+      if (commentSubmitBtn) commentSubmitBtn.disabled = false;
+    }
+  }
+  commentSubmitBtn?.addEventListener("click", submitComment);
+  commentInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); submitComment(); }
+  });
+
+  const deleteActivityModal = document.getElementById("deleteActivityModal");
+  const closeDeleteActivityModal = () => deleteActivityModal?.classList.remove("open");
+  document.getElementById("deleteActivityClose")?.addEventListener("click", closeDeleteActivityModal);
+  document.getElementById("deleteActivityCancelBtn")?.addEventListener("click", closeDeleteActivityModal);
+  deleteActivityModal?.addEventListener("click", (e) => { if (e.target === deleteActivityModal) closeDeleteActivityModal(); });
+  modal.querySelector("#modalDeleteBtn")?.addEventListener("click", () => {
+    if (!currentActivityId) return;
+    deleteActivityModal?.classList.add("open");
+  });
+  document.getElementById("deleteActivityConfirmBtn")?.addEventListener("click", async () => {
+    const activityId = currentActivityId;
+    if (!activityId) return;
+    const confirmBtn = document.getElementById("deleteActivityConfirmBtn");
+    if (confirmBtn) confirmBtn.disabled = true;
+    closeDeleteActivityModal();
+    try {
+      await apiFetch(`/activities/${activityId}`, { method: "DELETE" });
+      closeActivityModal();
+      await ensureActivitiesLoaded(true);
+      await handleRoute();
+    } catch (err) {
+      showToast(`Could not delete activity: ${err.message}`, "error");
+      if (confirmBtn) confirmBtn.disabled = false;
+    }
+  });
+
+  modal.querySelector("#modalEditBtn")?.addEventListener("click", () => {
+    if (!currentActivityId) return;
+    const editId = currentActivityId;
+    const modalActions = document.getElementById("modalActivityActions");
+    const rawType = modalActions?.dataset.rawType || "run";
+    const rawTs   = modalActions?.dataset.rawTs   || "";
+    const rawDist = modalActions?.dataset.rawDist || "";
+    const rawDur  = modalActions?.dataset.rawDur  || "";
+    closeActivityModal();
+    const addModal = document.getElementById("addActivityModal");
+    if (!addModal) return;
+    const typeSelectEl = document.getElementById("activityTypeSelect");
+    if (typeSelectEl) { typeSelectEl.value = rawType; typeSelectEl.dispatchEvent(new Event("change")); }
+    document.getElementById("activityDistanceInput").value = rawDist;
+    document.getElementById("activityDurationInput").value = rawDur;
+    if (rawTs) {
+      const local = new Date(new Date(rawTs).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      document.getElementById("activityTimestampInput").value = local;
+    }
+    addModal.dataset.editActivityId = editId;
+    const titleEl = addModal.querySelector(".modal-meta");
+    if (titleEl) titleEl.textContent = "Edit Activity";
+    document.getElementById("addActivitySubmit").textContent = "Update Activity";
+    const editActivity = state.activities.find((a) => String(a.activity_id) === String(editId));
+    const hrInputEl = document.getElementById("activityHrInput");
+    if (hrInputEl) hrInputEl.value = editActivity?.average_heart_rate ? Math.round(editActivity.average_heart_rate) : "";
+    if (editActivity?.laps?.length && addModal._populateLapRows) addModal._populateLapRows(editActivity.laps);
+    addModal.classList.add("open");
+  });
+}
+
+function attachActivityCardHandlers() {
+  const modal = document.getElementById("activityModal");
+  if (!modal) return;
+
+  Array.from(app.querySelectorAll(".activity-card")).forEach((card) => {
+    card.addEventListener("click", (event) => {
+      if (event.target.closest(".like-btn, .likers-btn, .comment-toggle-btn, .reflect-btn")) return;
+      const activityId = card.dataset.activityId;
+      if (activityId) openActivityModal(activityId);
+    });
+  });
+
+  attachActivityModalInteractions();
+
+  document.getElementById("emptyAddActivityBtn")?.addEventListener("click", () => {
+    document.getElementById("addActivityModal")?.classList.add("open");
   });
 
   // Like buttons (inline on cards)
@@ -848,7 +993,7 @@ function attachActivityCardHandlers() {
         btn.title = newHasLiked ? "Unlike" : "Like";
         btn.textContent = `${newHasLiked ? "♥" : "♡"} ${newLikes.length}`;
       } catch (err) {
-        window.alert(`Like failed: ${err.message}`);
+        showToast(`Like failed: ${err.message}`, "error");
       } finally {
         btn.disabled = false;
       }
@@ -883,103 +1028,26 @@ function attachActivityCardHandlers() {
       event.stopPropagation();
       const activityId = btn.dataset.activityId;
       if (!activityId) return;
-      const card = btn.closest(".activity-card");
-      if (card) {
-        populateModal(card, activityId);
-        modal.classList.add("open");
-        setTimeout(() => document.getElementById("commentInput")?.focus(), 100);
-      }
+      openActivityModal(activityId);
+      setTimeout(() => document.getElementById("commentInput")?.focus(), 100);
     });
-  });
-
-  // Comment submit
-  const commentInput = document.getElementById("commentInput");
-  const commentSubmitBtn = document.getElementById("commentSubmitBtn");
-
-  async function submitComment() {
-    const content = commentInput?.value.trim();
-    if (!content || !currentActivityId) return;
-    if (commentSubmitBtn) commentSubmitBtn.disabled = true;
-    try {
-      const comment = await apiFetch("/activity_comments", {
-        method: "POST",
-        body: JSON.stringify({ activity_id: currentActivityId, user_id: state.userId, content }),
-      });
-      state.activityComments.push(comment);
-      if (commentInput) commentInput.value = "";
-      renderModalComments(currentActivityId);
-    } catch (err) {
-      window.alert(`Comment failed: ${err.message}`);
-    } finally {
-      if (commentSubmitBtn) commentSubmitBtn.disabled = false;
-    }
-  }
-
-  commentSubmitBtn?.addEventListener("click", submitComment);
-  commentInput?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") { e.preventDefault(); submitComment(); }
-  });
-
-  modal.querySelector("#modalDeleteBtn")?.addEventListener("click", async () => {
-    if (!currentActivityId) return;
-    if (!confirm("Delete this activity?")) return;
-    try {
-      await apiFetch(`/activities/${currentActivityId}`, { method: "DELETE" });
-      closeModal();
-      await ensureActivitiesLoaded(true);
-      await handleRoute();
-    } catch (err) {
-      alert(`Could not delete: ${err.message}`);
-    }
-  });
-
-  modal.querySelector("#modalEditBtn")?.addEventListener("click", () => {
-    if (!currentActivityId || !modalActions) return;
-    // Capture before closeModal() nulls currentActivityId
-    const editId = currentActivityId;
-    const rawType = modalActions.dataset.rawType || "run";
-    const rawTs   = modalActions.dataset.rawTs   || "";
-    const rawDist = modalActions.dataset.rawDist || "";
-    const rawDur  = modalActions.dataset.rawDur  || "";
-    closeModal();
-    const addModal = document.getElementById("addActivityModal");
-    if (!addModal) return;
-    const typeSelectEl = document.getElementById("activityTypeSelect");
-    if (typeSelectEl) { typeSelectEl.value = rawType; typeSelectEl.dispatchEvent(new Event("change")); }
-    document.getElementById("activityDistanceInput").value = rawDist;
-    document.getElementById("activityDurationInput").value = rawDur;
-    if (rawTs) {
-      const local = new Date(new Date(rawTs).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-      document.getElementById("activityTimestampInput").value = local;
-    }
-    addModal.dataset.editActivityId = editId;
-    const titleEl = addModal.querySelector(".modal-meta");
-    if (titleEl) titleEl.textContent = "Edit Activity";
-    document.getElementById("addActivitySubmit").textContent = "Update Activity";
-    // Pre-populate HR and laps
-    const editActivity = state.activities.find((a) => String(a.activity_id) === String(editId));
-    const hrInputEl = document.getElementById("activityHrInput");
-    if (hrInputEl) hrInputEl.value = editActivity?.average_heart_rate ? Math.round(editActivity.average_heart_rate) : "";
-    if (editActivity?.laps?.length && addModal._populateLapRows) addModal._populateLapRows(editActivity.laps);
-    addModal.classList.add("open");
   });
 
   // "Reflect with coach" buttons — open a per-activity coaching session
   app.querySelectorAll(".reflect-btn").forEach((btn) => {
     btn.addEventListener("click", async (event) => {
-      event.stopPropagation(); // don't open the activity modal
+      event.stopPropagation();
       const activityId = btn.dataset.activityId;
       if (!activityId || !state.userId) return;
       btn.disabled = true;
       btn.textContent = "Opening...";
       try {
-        // Find or create a reflection session for this specific activity
         const sessions = await apiFetch("/chatbot_sessions");
         const existing = Array.isArray(sessions)
           ? sessions.find(
               (s) =>
                 s.user_id === state.userId &&
-                s.session_type === "activity_reflection" &&
+                s.session_type === "coach" &&
                 s.related_activity_id === activityId
             )
           : null;
@@ -992,21 +1060,32 @@ function attachActivityCardHandlers() {
             method: "POST",
             body: JSON.stringify({
               user_id: state.userId,
-              session_type: "activity_reflection",
+              session_type: "coach",
               related_activity_id: activityId,
             }),
           });
           sessionId = created.chatbot_id;
         }
 
-        // Load this session as the active coach session and navigate
+        const titleKey = `stride.sessionTitle.${sessionId}`;
+        if (!localStorage.getItem(titleKey)) {
+          const activity = (state.activities || []).find((a) => String(a.activity_id) === activityId);
+          if (activity) {
+            localStorage.setItem(
+              titleKey,
+              `${formatActivityType(activity.activity_type)} on ${formatShortDate(activity.timestamp)}`
+            );
+          }
+        }
+
+        state.coachSessions = [];
         state.coachSessionId = sessionId;
         state.coachMessages = [];
         window.location.hash = "#/coach";
       } catch (err) {
         btn.disabled = false;
         btn.textContent = "Reflect with coach";
-        alert(`Could not open coaching session: ${err.message}`);
+        showToast(`Could not open coaching session: ${err.message}`, "error");
       }
     });
   });
@@ -1061,7 +1140,7 @@ function attachAddActivityActions() {
       <input class="form-control lap-dist" type="number" step="0.01" min="0" placeholder="km" />
       <input class="form-control lap-dur" type="text" placeholder="mm:ss" />
       <input class="form-control lap-hr" type="number" min="40" max="220" placeholder="bpm" />
-      <button type="button" class="btn btn-sm btn-outline-danger lap-remove-btn">&times;</button>
+      <button type="button" class="btn btn-sm btn-outline-danger lap-remove-btn" aria-label="Remove lap">&times;</button>
     `;
     div.querySelector(".lap-remove-btn").addEventListener("click", () => {
       div.remove();
