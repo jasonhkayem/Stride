@@ -13,8 +13,9 @@ function renderLayout({ active, title, subtitle, content, actions = true }) {
       : "";
 
   return `
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
     <div class="app-layout">
-      <aside class="sidebar">
+      <aside class="sidebar" id="appSidebar">
         <div>
           ${renderLogo()}
           <nav class="nav-links">
@@ -34,9 +35,12 @@ function renderLayout({ active, title, subtitle, content, actions = true }) {
 
       <div class="main-content">
         <header class="top-bar">
-          <div>
-            <h1 class="page-title">${title}</h1>
-            <p class="text-muted">${subtitle}</p>
+          <div class="top-bar-left">
+            <button class="hamburger-btn" id="hamburgerBtn" aria-label="Open menu">&#9776;</button>
+            <div>
+              <h1 class="page-title">${title}</h1>
+              <p class="text-muted">${subtitle}</p>
+            </div>
           </div>
           ${
             actions
@@ -100,6 +104,25 @@ function renderAvatarEl(user, extraClass = "") {
 }
 
 function initLayoutActions() {
+  const sidebar = document.getElementById("appSidebar");
+  const overlay = document.getElementById("sidebarOverlay");
+  const hamburger = document.getElementById("hamburgerBtn");
+
+  function openSidebar() {
+    sidebar?.classList.add("open");
+    overlay?.classList.add("open");
+  }
+  function closeSidebar() {
+    sidebar?.classList.remove("open");
+    overlay?.classList.remove("open");
+  }
+
+  hamburger?.addEventListener("click", openSidebar);
+  overlay?.addEventListener("click", closeSidebar);
+  sidebar?.querySelectorAll(".nav-link").forEach((link) => {
+    link.addEventListener("click", closeSidebar);
+  });
+
   const logoutBtn = document.getElementById("logoutBtn");
   logoutBtn?.addEventListener("click", () => {
     clearAuth();

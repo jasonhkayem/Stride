@@ -1541,6 +1541,32 @@ body {
   }
 }
 
+/* Mobile sidebar drawer */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 200;
+}
+.sidebar-overlay.open {
+  display: block;
+}
+.hamburger-btn {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 4px 8px;
+  color: var(--text-primary);
+}
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 @media (max-width: 1100px) {
   .top-bar {
     flex-direction: column;
@@ -1561,22 +1587,23 @@ body {
     padding: 40px;
   }
 
-  .app-layout {
-    flex-direction: column;
+  .hamburger-btn {
+    display: block;
   }
 
   .sidebar {
-    width: 100%;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    position: static;
-    height: auto;
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    width: 240px;
+    z-index: 300;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
   }
 
-  .nav-links {
-    flex-direction: row;
-    flex-wrap: wrap;
+  .sidebar.open {
+    transform: translateX(0);
   }
 
   .page-grid {
@@ -1709,12 +1736,6 @@ body {
   .signup-panel,
   .main-content {
     padding: 24px;
-  }
-
-  .sidebar {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
   }
 
   .quick-actions {
