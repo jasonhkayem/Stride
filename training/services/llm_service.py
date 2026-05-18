@@ -50,6 +50,7 @@ class LLMService:
         messages: List[Dict[str, str]],
         temperature: float = 0.3,
         max_tokens: int = 500,
+        timeout_sec: int = None,
     ) -> str:
         self._require_config()
 
@@ -66,8 +67,9 @@ class LLMService:
         req.add_header("Content-Type", "application/json")
         req.add_header("Authorization", f"{self.auth_scheme} {self.api_key}")
 
+        effective_timeout = timeout_sec if timeout_sec is not None else self.timeout_sec
         try:
-            with request.urlopen(req, timeout=self.timeout_sec) as resp:
+            with request.urlopen(req, timeout=effective_timeout) as resp:
                 payload = json.loads(resp.read().decode("utf-8"))
         except Exception as exc:
             raise LLMServiceError(f"LLM API call failed: {exc}") from exc

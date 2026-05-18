@@ -55,3 +55,11 @@ build/
 
 # User-uploaded content (not for version control)
 images/avatars/
+
+# Project report and presentation files
+*.docx
+*.pptx
+*.pdf
+Presentation Script + Demo Flow.md
+images/sequence diagram - training plan generation.png
+images/system architecture diagram.png

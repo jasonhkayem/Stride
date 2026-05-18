@@ -383,6 +383,7 @@ class TrainingPlanVersionService(CRUDService):
                 ],
                 temperature=0.2,
                 max_tokens=3000,
+                timeout_sec=240,
             )
         except LLMServiceError as exc:
             raise ValueError(str(exc)) from exc
